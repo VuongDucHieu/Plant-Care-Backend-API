@@ -12,8 +12,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "lint": "eslint src",
-    "format": "prettier --write",
-    "format:check": "prettier --check"
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "keywords": [],
   "author": "",
