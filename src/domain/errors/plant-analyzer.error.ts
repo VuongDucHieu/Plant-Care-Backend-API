@@ -1,12 +1,12 @@
-import { PlantAnalyzerErrorCode } from "../plant.types.js";
+import { PlantAnalyzerErrorCode } from '../plant.types.js';
 
 export class PlantAnalyzerError extends Error {
-    constructor (
-        message: string,
-        public readonly code: PlantAnalyzerErrorCode
-    ) {
-        super(message)
+  constructor(
+    message: string,
+    public readonly code: PlantAnalyzerErrorCode,
+  ) {
+    super(message);
 
-        this.name = 'PlantAnalyzerError'
-    } 
+    this.name = 'PlantAnalyzerError';
+  }
 }
