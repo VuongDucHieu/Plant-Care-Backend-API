@@ -44,3 +44,11 @@ export type DiagnosePlantResult = {
   diagnosis: PlantDiagnosis;
   treatment: TreatmentPlan;
 };
+
+//===== ERROR =====
+export type PlantAnalyzerErrorCode = 
+| 'RATE_LIMIT'
+| 'TIMEOUT'
+| 'UNAVAILABLE'
+| 'INVALID_RESPONSE'
+| 'UNKNOWN'
