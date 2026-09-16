@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, type Part } from '@google/genai';
 
 import type { PlantAnalyzer } from '../../domain/plant-analyzer.js';
 import type {
@@ -14,6 +14,15 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
     this.client = new GoogleGenAI({
       apiKey,
     });
+  }
+
+  private toImageParts(images: ImageInput[]): Part[] {
+    return images.map((image) => ({
+      inlineData: {
+        data: image.bytes.toString('base64'),
+        mimeType: image.mimeType,
+      },
+    }));
   }
 
   async identify(images: ImageInput[]): Promise<IdentifyPlantResult> {
