@@ -6,6 +6,7 @@ import type {
   IdentifyPlantResult,
   ImageInput,
 } from '../../domain/plant.types.js';
+import { identifyResponseSchema } from './schemas/identify-response.schema.js';
 
 export class GeminiPlantAnalyzer implements PlantAnalyzer {
   private readonly client: GoogleGenAI;
@@ -56,9 +57,19 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
       ],
     });
 
-    console.log(response.text);
+    // console.log(response.text);
 
-    throw new Error('Response mapping not implemented');
+    // throw new Error('Response mapping not implemented');
+
+    const text = response.text;
+
+    if (!text) {
+      throw new Error('Gemini returned an empty response');
+    }
+
+    const raw: unknown = JSON.parse(text);
+
+    return identifyResponseSchema.parse(raw);
   }
 
   async diagnose(images: ImageInput[]): Promise<DiagnosePlantResult> {
