@@ -10,7 +10,19 @@ import type {
 export class GeminiPlantAnalyzer implements PlantAnalyzer {
   private readonly client: GoogleGenAI;
 
-  constructor(apiKey: string) {
+  private readonly identifyInstruction = `
+  Analyze the provided plant image.
+
+  Return the result as JSON containing:
+  - commonName
+  - scientificName
+  - description 
+  `;
+
+  constructor(
+    apiKey: string,
+    private readonly model: string,
+  ) {
     this.client = new GoogleGenAI({
       apiKey,
     });
@@ -26,7 +38,27 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
   }
 
   async identify(images: ImageInput[]): Promise<IdentifyPlantResult> {
-    throw new Error('Not implement');
+    const imageParts = this.toImageParts(images);
+
+    const response = await this.client.models.generateContent({
+      model: this.model,
+
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: this.identifyInstruction,
+            },
+            ...imageParts,
+          ],
+        },
+      ],
+    });
+
+    console.log(response.text);
+
+    throw new Error('Response mapping not implemented');
   }
 
   async diagnose(images: ImageInput[]): Promise<DiagnosePlantResult> {
