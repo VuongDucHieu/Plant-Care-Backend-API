@@ -1,11 +1,13 @@
 import { GoogleGenAI, type Part } from '@google/genai';
 
+import {PlantAnalyzerError} from '../../domain/errors/plant-analyzer.error.js'
 import type { PlantAnalyzer } from '../../domain/plant-analyzer.js';
 import type {
   DiagnosePlantResult,
   IdentifyPlantResult,
   ImageInput,
 } from '../../domain/plant.types.js';
+
 import { identifyResponseSchema } from './schemas/identify-response.schema.js';
 
 export class GeminiPlantAnalyzer implements PlantAnalyzer {
@@ -27,6 +29,23 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
     this.client = new GoogleGenAI({
       apiKey,
     });
+  }
+
+  private parseIdentifyResponse(text: string | undefined): IdentifyPlantResult {
+    if (!text) {
+      throw new PlantAnalyzerError('Gemini returned an empty response', 'INVALID_RESPONSE')
+    }
+
+    try {
+      const raw: unknown = JSON.parse(text)
+
+      return identifyResponseSchema.parse(raw)
+    } catch {
+      throw new PlantAnalyzerError(
+        'Gemini returned an invalid response',
+        'INVALID_RESPONSE'
+      )
+    }
   }
 
   private toImageParts(images: ImageInput[]): Part[] {
@@ -57,22 +76,10 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
       ],
     });
 
-    // console.log(response.text);
-
-    // throw new Error('Response mapping not implemented');
-
-    const text = response.text;
-
-    if (!text) {
-      throw new Error('Gemini returned an empty response');
-    }
-
-    const raw: unknown = JSON.parse(text);
-
-    return identifyResponseSchema.parse(raw);
+    return this.parseIdentifyResponse(response.text)
   }
 
-  async diagnose(images: ImageInput[]): Promise<DiagnosePlantResult> {
+  async diagnose(_images: ImageInput[]): Promise<DiagnosePlantResult> {
     throw new Error('Not implement');
   }
 }
