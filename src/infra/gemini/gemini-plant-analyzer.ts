@@ -1,6 +1,6 @@
 import { GoogleGenAI, type Part } from '@google/genai';
 
-import {PlantAnalyzerError} from '../../domain/errors/plant-analyzer.error.js'
+import { PlantAnalyzerError } from '../../domain/errors/plant-analyzer.error.js';
 import type { PlantAnalyzer } from '../../domain/plant-analyzer.js';
 import type {
   DiagnosePlantResult,
@@ -9,6 +9,7 @@ import type {
 } from '../../domain/plant.types.js';
 
 import { identifyResponseSchema } from './schemas/identify-response.schema.js';
+import { identifyGeminiSchema } from './schemas/identify-gemini.schema.js';
 
 export class GeminiPlantAnalyzer implements PlantAnalyzer {
   private readonly client: GoogleGenAI;
@@ -16,10 +17,10 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
   private readonly identifyInstruction = `
   Analyze the provided plant image.
 
-  Return the result as JSON containing:
-  - commonName
-  - scientificName
-  - description 
+  Identify the plant and provide:
+  - basic plant information
+  - light, water, and temperature requirements
+  - a concise care plant with practical recommendations
   `;
 
   constructor(
@@ -33,18 +34,15 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
 
   private parseIdentifyResponse(text: string | undefined): IdentifyPlantResult {
     if (!text) {
-      throw new PlantAnalyzerError('Gemini returned an empty response', 'INVALID_RESPONSE')
+      throw new PlantAnalyzerError('Gemini returned an empty response', 'INVALID_RESPONSE');
     }
 
     try {
-      const raw: unknown = JSON.parse(text)
+      const raw: unknown = JSON.parse(text);
 
-      return identifyResponseSchema.parse(raw)
+      return identifyResponseSchema.parse(raw);
     } catch {
-      throw new PlantAnalyzerError(
-        'Gemini returned an invalid response',
-        'INVALID_RESPONSE'
-      )
+      throw new PlantAnalyzerError('Gemini returned an invalid response', 'INVALID_RESPONSE');
     }
   }
 
@@ -74,9 +72,14 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
           ],
         },
       ],
+
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: identifyGeminiSchema,
+      },
     });
 
-    return this.parseIdentifyResponse(response.text)
+    return this.parseIdentifyResponse(response.text);
   }
 
   async diagnose(_images: ImageInput[]): Promise<DiagnosePlantResult> {
