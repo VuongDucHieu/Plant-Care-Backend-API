@@ -1,4 +1,4 @@
-import { GoogleGenAI, type Part } from '@google/genai';
+import { ApiError, GoogleGenAI, type Part } from '@google/genai';
 
 import { PlantAnalyzerError } from '../../domain/errors/plant-analyzer.error.js';
 import type { PlantAnalyzer } from '../../domain/plant-analyzer.js';
@@ -55,29 +55,49 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
     }));
   }
 
+  private mapProviderError(error: unknown): PlantAnalyzerError {
+    if (!(error instanceof ApiError)) {
+      return new PlantAnalyzerError('Gemini request failed', 'UNKNOWN');
+    }
+
+    if (error.status === 429) {
+      return new PlantAnalyzerError('Gemini rate limit exceeded', 'RATE_LIMITED');
+    }
+
+    if (error.status >= 500) {
+      return new PlantAnalyzerError('Gemini is unavailable', 'UNAVAILABLE');
+    }
+
+    return new PlantAnalyzerError('Gemini request failed', 'UNKNOWN');
+  }
+
   async identify(images: ImageInput[]): Promise<IdentifyPlantResult> {
     const imageParts = this.toImageParts(images);
 
-    const response = await this.client.models.generateContent({
-      model: this.model,
+    let response;
 
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              text: this.identifyInstruction,
-            },
-            ...imageParts,
-          ],
+    try {
+      response = await this.client.models.generateContent({
+        model: this.model,
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: this.identifyInstruction,
+              },
+              ...imageParts,
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: identifyGeminiSchema,
         },
-      ],
-
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: identifyGeminiSchema,
-      },
-    });
+      });
+    } catch (error: unknown) {
+      throw this.mapProviderError(error);
+    }
 
     return this.parseIdentifyResponse(response.text);
   }

@@ -47,4 +47,4 @@ export type DiagnosePlantResult = {
 
 //===== ERROR =====
 export type PlantAnalyzerErrorCode =
-  'RATE_LIMIT' | 'TIMEOUT' | 'UNAVAILABLE' | 'INVALID_RESPONSE' | 'UNKNOWN';
+  'RATE_LIMITED' | 'TIMEOUT' | 'UNAVAILABLE' | 'INVALID_RESPONSE' | 'UNKNOWN';
