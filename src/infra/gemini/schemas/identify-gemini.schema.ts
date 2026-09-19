@@ -34,7 +34,7 @@ export const identifyGeminiSchema = {
       required: ['light', 'water', 'temperature'],
     },
 
-    carePlant: {
+    carePlan: {
       type: 'object',
       properties: {
         summary: {
@@ -51,5 +51,5 @@ export const identifyGeminiSchema = {
     },
   },
 
-  required: ['overview', 'requirements', 'carePlant'],
+  required: ['overview', 'requirements', 'carePlan'],
 };
