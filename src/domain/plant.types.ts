@@ -24,7 +24,7 @@ export type CarePlan = {
 export type IdentifyPlantResult = {
   overview: PlantOverview;
   requirements: PlantRequirement;
-  carePlan: CarePlan;
+  carePlant: CarePlan;
 };
 
 //===== DIAGNOSE =====
