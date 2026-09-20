@@ -40,12 +40,12 @@ Image exceeding this limit must be reject.
 
 HTTP Status: 200 OK
 
-Response: 
+Response:
 
 {
-    "commonName": "Sunflower",
-    "scientificName": "Helianthus annuus"
-    "description": "..."
+"commonName": "Sunflower",
+"scientificName": "Helianthus annuus"
+"description": "..."
 }
 
 ### AC6 - Invalid input
@@ -108,7 +108,7 @@ This issue does not include:
 
 These capabilities are handled by separate issues.
 
---- 
+---
 
 ## Definition of Done
 
@@ -121,4 +121,3 @@ These capabilities are handled by separate issues.
 - Typescript typecheck passes
 - ESLint passes
 - API documentation is updated
-

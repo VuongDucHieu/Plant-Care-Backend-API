@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { TimeoutError } from '../../../src/shared/async/timeout.error.ts';
-import { withTimeout } from '../../../src/shared/async/with-timeout.ts';
+import { TimeoutError } from '../../../src/shared/async/timeout.error.js';
+import { withTimeout } from '../../../src/shared/async/with-timeout.js';
 
 describe('withTimeout', () => {
   it('returns the operation result when it completes before timeout', async () => {

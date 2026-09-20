@@ -36,10 +36,11 @@ API contracts will be documents as HTTP capabilities are implemented.
 Each feature follows this flow:
 
 Product Problem
-+ User Story
-+ Acceptance Criteria
-+ API contract
-+ Technical Design
-+ Implementation
-+ Tests
-+ Acceptance Verification
+
+- User Story
+- Acceptance Criteria
+- API contract
+- Technical Design
+- Implementation
+- Tests
+- Acceptance Verification

@@ -24,7 +24,7 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
   Identify the plant and provide:
   - basic plant information
   - light, water, and temperature requirements
-  - a concise care plant with practical recommendations
+  - a concise care plan with practical recommendations
   `;
 
   constructor(

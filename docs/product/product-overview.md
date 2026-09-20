@@ -6,7 +6,7 @@ Plant Care Platform helps users identify plants, understand plant health, diagno
 
 The platform combines plant-management capabilities with AI-assisted plant analysis.
 
-## Target Users 
+## Target Users
 
 ### Plant Owners
 
