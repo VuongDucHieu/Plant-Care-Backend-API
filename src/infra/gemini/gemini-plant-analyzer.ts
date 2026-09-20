@@ -87,7 +87,7 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
 
     try {
       response = await withTimeout(
-        () =>
+        (signal) =>
           this.client.models.generateContent({
             model: this.model,
             contents: [
@@ -104,6 +104,8 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
             config: {
               responseMimeType: 'application/json',
               responseSchema: identifyGeminiSchema,
+
+              abortSignal: signal,
             },
           }),
         this.timeoutMs,

@@ -25,4 +25,22 @@ describe('withTimeout', () => {
 
     await expect(withTimeout(operation, 10)).rejects.toBeInstanceOf(TimeoutError);
   });
+
+  it('aborts the operation when timeout is exceed', async () => {
+    let receivedSignal: AbortSignal | undefined;
+
+    const operation = async (signal: AbortSignal) => {
+      receivedSignal = signal;
+
+      await new Promise((resolve) => {
+        setTimeout(resolve, 100);
+      });
+
+      return 'success';
+    };
+
+    await expect(withTimeout(operation, 10)).rejects.toBeInstanceOf(TimeoutError);
+
+    expect(receivedSignal?.aborted).toBe(true);
+  });
 });
