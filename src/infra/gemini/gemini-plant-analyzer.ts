@@ -11,6 +11,10 @@ import type {
 import { identifyResponseSchema } from './schemas/identify-response.schema.js';
 import { identifyGeminiSchema } from './schemas/identify-gemini.schema.js';
 
+import { withTimeout } from '../../shared/async/with-timeout.js';
+
+import { TimeoutError } from '../../shared/async/timeout.error.js';
+
 export class GeminiPlantAnalyzer implements PlantAnalyzer {
   private readonly client: GoogleGenAI;
 
@@ -26,6 +30,7 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
   constructor(
     apiKey: string,
     private readonly model: string,
+    private readonly timeoutMs: number,
   ) {
     this.client = new GoogleGenAI({
       apiKey,
@@ -56,6 +61,10 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
   }
 
   private mapProviderError(error: unknown): PlantAnalyzerError {
+    if (error instanceof TimeoutError) {
+      return new PlantAnalyzerError('Gemini request timeout', 'TIMEOUT');
+    }
+
     if (!(error instanceof ApiError)) {
       return new PlantAnalyzerError('Gemini request failed', 'UNKNOWN');
     }
@@ -77,24 +86,28 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
     let response;
 
     try {
-      response = await this.client.models.generateContent({
-        model: this.model,
-        contents: [
-          {
-            role: 'user',
-            parts: [
+      response = await withTimeout(
+        () =>
+          this.client.models.generateContent({
+            model: this.model,
+            contents: [
               {
-                text: this.identifyInstruction,
+                role: 'user',
+                parts: [
+                  {
+                    text: this.identifyInstruction,
+                  },
+                  ...imageParts,
+                ],
               },
-              ...imageParts,
             ],
-          },
-        ],
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: identifyGeminiSchema,
-        },
-      });
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: identifyGeminiSchema,
+            },
+          }),
+        this.timeoutMs,
+      );
     } catch (error: unknown) {
       throw this.mapProviderError(error);
     }
