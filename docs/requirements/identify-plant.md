@@ -1,4 +1,4 @@
-# PLANT-1 - Implement Plant Identification API
+# PLANT-124 - Implement Plant Identification API
 
 ## User Story
 
