@@ -26,7 +26,7 @@ describe('withTimeout', () => {
     await expect(withTimeout(operation, 10)).rejects.toBeInstanceOf(TimeoutError);
   });
 
-  it('aborts the operation when timeout is exceed', async () => {
+  it('aborts the operation when timeout is exceeded', async () => {
     let receivedSignal: AbortSignal | undefined;
 
     const operation = async (signal: AbortSignal) => {
