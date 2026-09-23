@@ -1,4 +1,4 @@
-import { PlantAnalyzerErrorCode } from '../plant.types.js';
+import type { PlantAnalyzerErrorCode } from '../plant.types.js';
 
 export class PlantAnalyzerError extends Error {
   constructor(
