@@ -1,5 +1,5 @@
-import type { ImageInput } from './plant.types.js'
+import type { ImageInput } from './plant.types.js';
 
 export interface ImageNormalizer {
-    normalize(image: ImageInput): Promise<ImageInput>
+  normalize(image: ImageInput): Promise<ImageInput>;
 }
