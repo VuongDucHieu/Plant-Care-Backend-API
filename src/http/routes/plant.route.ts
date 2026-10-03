@@ -25,8 +25,11 @@ export function createPlantRouter({
 
   router.post(
     '/diagnose',
-    upload.array('images', 2),
-    diagnosePlantController.handle.bind(diagnosePlantController)
+    upload.fields([
+      { name: 'plantImage', maxCount: 1 },
+      { name: 'diaseaseImage', maxCount: 1 }
+    ]),
+    diagnosePlantController.handle.bind(diagnosePlantController),
   )
 
   return router;
