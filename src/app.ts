@@ -5,11 +5,14 @@ import { GeminiPlantAnalyzer } from './infra/gemini/gemini-plant-analyzer.js';
 import { SharpImageNormalizer } from './infra/image/sharp-image-normalizer.js';
 import { IdentifyPlantUseCase } from './application/use-cases/identify-plant.use-case.js';
 import { IdentifyPlantController } from './http/controllers/identify-plant.controller.js';
+import { DiagnosePlantUseCase } from './application/use-cases/diagnose-plant.use-case.js';
+import { DiagnosePlantController } from './http/controllers/diagnose-plant.controller.js';
 import { createImageUploadMiddleware } from './http/middlewares/upload-file.middleware.js';
 import { createPlantRouter } from './http/routes/plant.route.js';
 import { errorHandler } from './http/middlewares/error-handler.middleware.js';
 
 import type { PlantAnalyzer } from './domain/plant-analyzer.js';
+import { healthRouter } from './http/routes/health.route.js';
 
 interface CreateAppOptions {
     plantAnalyzer?: PlantAnalyzer
@@ -29,9 +32,11 @@ export function createApp(options: CreateAppOptions = {}) {
 
     //2. Application
     const identifyPlantUseCase = new IdentifyPlantUseCase(plantAnalyzer, imageNormalizer);
+    const diagnosePlantUseCase = new DiagnosePlantUseCase(plantAnalyzer, imageNormalizer);
 
     //3. HTTP Controller
     const identifyPlantController = new IdentifyPlantController(identifyPlantUseCase);
+    const diagnosePlantController = new DiagnosePlantController(diagnosePlantUseCase);
 
     //4. HTTP Middleware
     const upload = createImageUploadMiddleware(env.MAX_IMAGE_MB);
@@ -39,10 +44,12 @@ export function createApp(options: CreateAppOptions = {}) {
     //5. Router
     const plantRouter = createPlantRouter({
         identifyPlantController,
+        diagnosePlantController,
         upload,
     });
 
     //6. Register routes
+    app.use('/health', healthRouter);
     app.use('/plants', plantRouter);
 
     //7. Central error handler
