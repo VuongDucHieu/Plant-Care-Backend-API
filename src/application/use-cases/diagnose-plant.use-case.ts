@@ -1,8 +1,14 @@
 import type { PlantAnalyzer } from '../../domain/plant-analyzer.js';
-import type { DiagnosePlantResult, ImageInput } from '../../domain/plant.types.js';
+import type {
+  DiagnosePlantResult,
+  ImageInput
+} from '../../domain/plant.types.js';
 import type { ImageNormalizer } from '../../domain/image-normalize.js';
 
-import {DiagnoseError} from '../errors/diagnose-input.error.js';
+export interface DiagnosePlantInput {
+  plantImage: ImageInput;
+  diseaseImage: ImageInput;
+}
 
 export class DiagnosePlantUseCase {
   constructor(
@@ -10,15 +16,17 @@ export class DiagnosePlantUseCase {
     private readonly imageNormalizer: ImageNormalizer
   ) { }
 
-  async execute(images: ImageInput[]): Promise<DiagnosePlantResult> {
-    if (images.length !== 2) {
-      throw new DiagnoseError('Diagnose requires exactly 2 images')
-    }
+  async execute(
+    input: DiagnosePlantInput,
+  ): Promise<DiagnosePlantResult> {
+    const [plantImage, diseaseImage] = await Promise.all([
+      this.imageNormalizer.normalize(input.plantImage),
+      this.imageNormalizer.normalize(input.diseaseImage),
+    ]);
 
-    const normalizedImages = await Promise.all(
-      images.map((image) => this.imageNormalizer.normalize(image))
-    )
-
-    return this.plantAnalyzer.diagnose(normalizedImages)
+    return this.plantAnalyzer.diagnose([
+      plantImage,
+      diseaseImage,
+    ]);
   }
 }

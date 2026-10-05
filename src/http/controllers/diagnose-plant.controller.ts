@@ -5,7 +5,7 @@ import type { ImageInput } from '../../domain/plant.types.js';
 
 type DiagnoseFiles = {
     plantImage?: Express.Multer.File[];
-    diaseaseImage?: Express.Multer.File[];
+    diseaseImage?: Express.Multer.File[];
 }
 
 export class DiagnosePlantController {
@@ -18,11 +18,11 @@ export class DiagnosePlantController {
             const files = req.files as DiagnoseFiles | undefined;
 
             const plantImage = files?.plantImage?.[0];
-            const diaseaseImage = files?.diaseaseImage?.[0];
+            const diseaseImage = files?.diseaseImage?.[0];
 
-            if (!plantImage || !diaseaseImage) {
+            if (!plantImage || !diseaseImage) {
                 res.status(400).json({
-                    message: 'plantImage and diaseaseImage are required'
+                    message: 'plantImage and diseaseImage are required'
                 })
 
                 return;
@@ -33,14 +33,14 @@ export class DiagnosePlantController {
                 mimeType: plantImage.mimetype
             };
 
-            const diaseaseImageInput: ImageInput = {
-                bytes: diaseaseImage.buffer,
-                mimeType: diaseaseImage.mimetype
+            const diseaseImageInput: ImageInput = {
+                bytes: diseaseImage.buffer,
+                mimeType: diseaseImage.mimetype
             };
 
             const result = await this.diagnosePlantUseCase.execute({
                 plantImage: plantImageInput,
-                diaseaseImage: diaseaseImageInput
+                diseaseImage: diseaseImageInput
             })
 
             res.status(200).json(result)
