@@ -27,10 +27,10 @@ export function createPlantRouter({
     '/diagnose',
     upload.fields([
       { name: 'plantImage', maxCount: 1 },
-      { name: 'diseaseImage', maxCount: 1 }
+      { name: 'diseaseImage', maxCount: 1 },
     ]),
     diagnosePlantController.handle.bind(diagnosePlantController),
-  )
+  );
 
   return router;
 }
