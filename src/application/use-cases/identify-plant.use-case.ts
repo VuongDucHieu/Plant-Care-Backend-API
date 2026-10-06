@@ -9,11 +9,11 @@ export class IdentifyPlantUseCase {
   constructor(
     private readonly plantAnalyzer: PlantAnalyzer,
     private readonly imageNormalizer: ImageNormalizer,
-  ) { }
+  ) {}
 
   async execute(images: ImageInput[]): Promise<IdentifyPlantResult> {
     if (images.length !== 2) {
-      throw new DiagnoseError('Diagnose requires exactly 2 images')
+      throw new DiagnoseError('Diagnose requires exactly 2 images');
     }
 
     const normalizedImages = await Promise.all(

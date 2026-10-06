@@ -44,7 +44,7 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
     - additional treatment notes
 
     Do not claim certainty when the visual evidence is insufficient.
-  `
+  `;
 
   constructor(
     apiKey: string,
@@ -70,9 +70,7 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
     }
   }
 
-  private parseDiagnoseResponse(
-    text: string | undefined
-  ): DiagnosePlantResult {
+  private parseDiagnoseResponse(text: string | undefined): DiagnosePlantResult {
     if (!text) {
       throw new PlantAnalyzerError('Gemini returned an empty response', 'INVALID_RESPONSE');
     }
@@ -158,36 +156,39 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
     let response;
 
     try {
-      response = await withTimeout((signal) => this.client.models.generateContent({
-        model: this.model,
+      response = await withTimeout(
+        (signal) =>
+          this.client.models.generateContent({
+            model: this.model,
 
-        contents: [
-          {
-            role: 'user',
-
-            parts: [
+            contents: [
               {
-                text: this.diagnoseInstruction
+                role: 'user',
+
+                parts: [
+                  {
+                    text: this.diagnoseInstruction,
+                  },
+
+                  ...imageParts,
+                ],
               },
+            ],
 
-              ...imageParts
-            ]
-          }
-        ],
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: diagnoseGeminiSchema,
 
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: diagnoseGeminiSchema,
+              abortSignal: signal,
+            },
+          }),
 
-          abortSignal: signal,
-        }
-      }),
-
-        this.timeoutMs)
+        this.timeoutMs,
+      );
     } catch (error: unknown) {
-      throw this.mapProviderError(error)
+      throw this.mapProviderError(error);
     }
 
-    return this.parseDiagnoseResponse(response.text)
+    return this.parseDiagnoseResponse(response.text);
   }
 }

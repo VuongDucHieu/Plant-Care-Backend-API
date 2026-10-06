@@ -15,45 +15,43 @@ import type { PlantAnalyzer } from './domain/plant-analyzer.js';
 import { healthRouter } from './http/routes/health.route.js';
 
 interface CreateAppOptions {
-    plantAnalyzer?: PlantAnalyzer
+  plantAnalyzer?: PlantAnalyzer;
 }
 
 export function createApp(options: CreateAppOptions = {}) {
-    const app = express();
+  const app = express();
 
-    //1. Infrastructure
-    const plantAnalyzer = options.plantAnalyzer ?? new GeminiPlantAnalyzer(
-        env.GEMINI_API_KEY,
-        env.GEMINI_MODEL,
-        env.GEMINI_TIMEOUT_MS
-    )
+  //1. Infrastructure
+  const plantAnalyzer =
+    options.plantAnalyzer ??
+    new GeminiPlantAnalyzer(env.GEMINI_API_KEY, env.GEMINI_MODEL, env.GEMINI_TIMEOUT_MS);
 
-    const imageNormalizer = new SharpImageNormalizer();
+  const imageNormalizer = new SharpImageNormalizer();
 
-    //2. Application
-    const identifyPlantUseCase = new IdentifyPlantUseCase(plantAnalyzer, imageNormalizer);
-    const diagnosePlantUseCase = new DiagnosePlantUseCase(plantAnalyzer, imageNormalizer);
+  //2. Application
+  const identifyPlantUseCase = new IdentifyPlantUseCase(plantAnalyzer, imageNormalizer);
+  const diagnosePlantUseCase = new DiagnosePlantUseCase(plantAnalyzer, imageNormalizer);
 
-    //3. HTTP Controller
-    const identifyPlantController = new IdentifyPlantController(identifyPlantUseCase);
-    const diagnosePlantController = new DiagnosePlantController(diagnosePlantUseCase);
+  //3. HTTP Controller
+  const identifyPlantController = new IdentifyPlantController(identifyPlantUseCase);
+  const diagnosePlantController = new DiagnosePlantController(diagnosePlantUseCase);
 
-    //4. HTTP Middleware
-    const upload = createImageUploadMiddleware(env.MAX_IMAGE_MB);
+  //4. HTTP Middleware
+  const upload = createImageUploadMiddleware(env.MAX_IMAGE_MB);
 
-    //5. Router
-    const plantRouter = createPlantRouter({
-        identifyPlantController,
-        diagnosePlantController,
-        upload,
-    });
+  //5. Router
+  const plantRouter = createPlantRouter({
+    identifyPlantController,
+    diagnosePlantController,
+    upload,
+  });
 
-    //6. Register routes
-    app.use('/health', healthRouter);
-    app.use('/plants', plantRouter);
+  //6. Register routes
+  app.use('/health', healthRouter);
+  app.use('/plants', plantRouter);
 
-    //7. Central error handler
-    app.use(errorHandler);
+  //7. Central error handler
+  app.use(errorHandler);
 
-    return app;
+  return app;
 }

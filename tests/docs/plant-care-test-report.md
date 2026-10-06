@@ -21,12 +21,12 @@ Báo cáo này mô tả **những gì sẽ được kiểm thử, cách thực h
 
 ## 2. Tổng quan test suite
 
-| Suite | Mã | Đối tượng | Mục đích | Trạng thái |
-|---|---|---|---|---|
-| Unit | UT-IDENTIFY | `IdentifyPlantUseCase` | Xác minh thứ tự normalize → identify, dữ liệu truyền và lỗi được lan truyền | NOT RUN |
-| Unit | UT-NORMALIZER | `SharpImageNormalizer` | Xác minh định dạng đầu ra và xử lý ảnh không hợp lệ | NOT RUN |
-| Integration | IT-IDENTIFY | `POST /plants/identify` | Xác minh Router → Multer → Controller → UseCase → HTTP response | NOT RUN |
-| Integration | IT-ERROR | HTTP error middleware | Xác minh mã HTTP và JSON khi upload/analyzer lỗi | NOT RUN |
+| Suite       | Mã            | Đối tượng               | Mục đích                                                                    | Trạng thái |
+| ----------- | ------------- | ----------------------- | --------------------------------------------------------------------------- | ---------- |
+| Unit        | UT-IDENTIFY   | `IdentifyPlantUseCase`  | Xác minh thứ tự normalize → identify, dữ liệu truyền và lỗi được lan truyền | NOT RUN    |
+| Unit        | UT-NORMALIZER | `SharpImageNormalizer`  | Xác minh định dạng đầu ra và xử lý ảnh không hợp lệ                         | NOT RUN    |
+| Integration | IT-IDENTIFY   | `POST /plants/identify` | Xác minh Router → Multer → Controller → UseCase → HTTP response             | NOT RUN    |
+| Integration | IT-ERROR      | HTTP error middleware   | Xác minh mã HTTP và JSON khi upload/analyzer lỗi                            | NOT RUN    |
 
 **Lưu ý về bằng chứng hiện có:** Người phát triển cho biết `pnpm typecheck` và `pnpm test:run` đã chạy thành công trước khi lập báo cáo; chưa có log, số lượng test hoặc kết quả từng test case để xác nhận trong tài liệu này. Hai lỗi ESLint đã được nêu ở `_next` và `_images`; trạng thái khắc phục và kết quả lint sau sửa chưa được xác nhận.
 
@@ -37,13 +37,13 @@ Báo cáo này mô tả **những gì sẽ được kiểm thử, cách thực h
 **Dependencies:** fake/mock `PlantAnalyzer`, fake/mock `ImageNormalizer`; không khởi tạo Gemini, không gọi HTTP.  
 **Mục đích:** Chứng minh UseCase điều phối đúng các dependency mà không phụ thuộc implementation cụ thể.
 
-| Test ID | Tình huống | Cách thực hiện / Input | Kết quả kỳ vọng | Trạng thái |
-|---|---|---|---|---|
-| UT-IDENTIFY-001 | Normalize trước khi identify | Truyền một `ImageInput`; mock normalizer trả ảnh đã chuyển đổi | Analyzer nhận đúng ảnh **đã normalize**, không nhận ảnh gốc | NOT RUN |
-| UT-IDENTIFY-002 | Trả kết quả analyzer | Fake analyzer trả một `IdentifyPlantResult` hợp lệ | `execute()` trả đúng kết quả đó | NOT RUN |
-| UT-IDENTIFY-003 | Không gọi analyzer nếu normalize thất bại | Fake normalizer ném `ImageInputError` | `execute()` reject với lỗi tương ứng; analyzer không được gọi | NOT RUN |
-| UT-IDENTIFY-004 | Lan truyền lỗi provider | Fake analyzer ném `PlantAnalyzerError('TIMEOUT')` | `execute()` reject với lỗi `TIMEOUT`, không tự đổi thành kết quả thành công | NOT RUN |
-| UT-IDENTIFY-005 | Xử lý danh sách ảnh theo contract hiện tại | Truyền danh sách `ImageInput[]` và theo dõi mock calls | Mỗi ảnh được normalize; analyzer nhận danh sách ảnh đã normalize | NOT RUN |
+| Test ID         | Tình huống                                 | Cách thực hiện / Input                                         | Kết quả kỳ vọng                                                             | Trạng thái |
+| --------------- | ------------------------------------------ | -------------------------------------------------------------- | --------------------------------------------------------------------------- | ---------- |
+| UT-IDENTIFY-001 | Normalize trước khi identify               | Truyền một `ImageInput`; mock normalizer trả ảnh đã chuyển đổi | Analyzer nhận đúng ảnh **đã normalize**, không nhận ảnh gốc                 | NOT RUN    |
+| UT-IDENTIFY-002 | Trả kết quả analyzer                       | Fake analyzer trả một `IdentifyPlantResult` hợp lệ             | `execute()` trả đúng kết quả đó                                             | NOT RUN    |
+| UT-IDENTIFY-003 | Không gọi analyzer nếu normalize thất bại  | Fake normalizer ném `ImageInputError`                          | `execute()` reject với lỗi tương ứng; analyzer không được gọi               | NOT RUN    |
+| UT-IDENTIFY-004 | Lan truyền lỗi provider                    | Fake analyzer ném `PlantAnalyzerError('TIMEOUT')`              | `execute()` reject với lỗi `TIMEOUT`, không tự đổi thành kết quả thành công | NOT RUN    |
+| UT-IDENTIFY-005 | Xử lý danh sách ảnh theo contract hiện tại | Truyền danh sách `ImageInput[]` và theo dõi mock calls         | Mỗi ảnh được normalize; analyzer nhận danh sách ảnh đã normalize            | NOT RUN    |
 
 **Tiêu chí hoàn thành suite:** Tất cả test case được thực thi và PASS; không có request ra Gemini; không cần API key thật cho test UseCase.
 
@@ -52,13 +52,13 @@ Báo cáo này mô tả **những gì sẽ được kiểm thử, cách thực h
 **Test target:** `src/infra/image/sharp-image-normalizer.ts`  
 **Mục đích:** Xác minh xử lý ảnh đầu vào trước khi gửi AI.
 
-| Test ID | Tình huống | Cách thực hiện / Input | Kết quả kỳ vọng | Trạng thái |
-|---|---|---|---|---|
-| UT-NORMALIZER-001 | Ảnh JPEG hợp lệ | Dùng fixture JPEG nhỏ | Trả `bytes` đọc được và `mimeType: image/jpeg` | NOT RUN |
-| UT-NORMALIZER-002 | Ảnh PNG hợp lệ | Dùng fixture PNG nhỏ | Trả JPEG hợp lệ, `mimeType: image/jpeg` | NOT RUN |
-| UT-NORMALIZER-003 | Định dạng không hỗ trợ | Dùng ảnh có định dạng khác JPEG/PNG mà Sharp nhận diện được | Ném `ImageInputError` với code `UNSUPPORTED_FORMAT` | NOT RUN |
-| UT-NORMALIZER-004 | Bytes ảnh hỏng | Truyền Buffer không phải ảnh | Ném `ImageInputError` với code `INVALID_IMAGE` | NOT RUN |
-| UT-NORMALIZER-005 | Ảnh vượt kích thước resize | Dùng fixture lớn hơn giới hạn 1600×1600 | Kích thước đầu ra nằm trong 1600×1600, không méo tỉ lệ | NOT RUN |
+| Test ID           | Tình huống                 | Cách thực hiện / Input                                      | Kết quả kỳ vọng                                        | Trạng thái |
+| ----------------- | -------------------------- | ----------------------------------------------------------- | ------------------------------------------------------ | ---------- |
+| UT-NORMALIZER-001 | Ảnh JPEG hợp lệ            | Dùng fixture JPEG nhỏ                                       | Trả `bytes` đọc được và `mimeType: image/jpeg`         | NOT RUN    |
+| UT-NORMALIZER-002 | Ảnh PNG hợp lệ             | Dùng fixture PNG nhỏ                                        | Trả JPEG hợp lệ, `mimeType: image/jpeg`                | NOT RUN    |
+| UT-NORMALIZER-003 | Định dạng không hỗ trợ     | Dùng ảnh có định dạng khác JPEG/PNG mà Sharp nhận diện được | Ném `ImageInputError` với code `UNSUPPORTED_FORMAT`    | NOT RUN    |
+| UT-NORMALIZER-004 | Bytes ảnh hỏng             | Truyền Buffer không phải ảnh                                | Ném `ImageInputError` với code `INVALID_IMAGE`         | NOT RUN    |
+| UT-NORMALIZER-005 | Ảnh vượt kích thước resize | Dùng fixture lớn hơn giới hạn 1600×1600                     | Kích thước đầu ra nằm trong 1600×1600, không méo tỉ lệ | NOT RUN    |
 
 **Ghi chú:** Kiểm thử dung lượng upload thuộc integration test của Multer, không thuộc trách nhiệm của Sharp normalizer.
 
@@ -71,18 +71,18 @@ Báo cáo này mô tả **những gì sẽ được kiểm thử, cách thực h
 
 **Điều kiện thiết kế để test:** `createApp()` cần cho phép inject `PlantAnalyzer` (hoặc dependency tương đương) khi chạy test; mặc định production vẫn dùng `GeminiPlantAnalyzer`. Không cần gọi `app.listen()` trong test nếu dùng Supertest với Express app.
 
-| Test ID | Tình huống | HTTP request / Thiết lập | Kết quả kỳ vọng | Trạng thái |
-|---|---|---|---|---|
-| IT-IDENTIFY-001 | Nhận diện ảnh thành công | `POST /plants/identify`, multipart field `image`, JPEG hợp lệ; fake analyzer trả kết quả mẫu | HTTP 200; JSON bằng kết quả mẫu; analyzer được gọi với ảnh JPEG đã normalize | NOT RUN |
-| IT-IDENTIFY-002 | Thiếu ảnh | `POST /plants/identify` không đính kèm file | HTTP 400; JSON báo thiếu ảnh; analyzer không được gọi | NOT RUN |
-| IT-IDENTIFY-003 | Sai tên field upload | Đính kèm file ở field khác `image` | HTTP 400 từ Multer; JSON `UPLOAD_ERROR` theo middleware hiện tại | NOT RUN |
-| IT-IDENTIFY-004 | Ảnh vượt dung lượng | Đính kèm ảnh lớn hơn `MAX_IMAGE_MB` | HTTP 413 nếu đã áp dụng thay đổi đề xuất; JSON code `IMAGE_TOO_LARGE` | NOT RUN |
-| IT-IDENTIFY-005 | Bytes ảnh không hợp lệ | Field `image` chứa bytes không phải ảnh | HTTP 400; JSON code `INVALID_IMAGE`; analyzer không được gọi | NOT RUN |
-| IT-IDENTIFY-006 | Provider rate limited | Fake analyzer ném `PlantAnalyzerError` code `RATE_LIMITED` | HTTP 429; JSON code `RATE_LIMITED` | NOT RUN |
-| IT-IDENTIFY-007 | Provider timeout | Fake analyzer ném code `TIMEOUT` | HTTP 504; JSON code `TIMEOUT` | NOT RUN |
-| IT-IDENTIFY-008 | Provider unavailable | Fake analyzer ném code `UNAVAILABLE` | HTTP 503; JSON code `UNAVAILABLE` | NOT RUN |
-| IT-IDENTIFY-009 | Provider invalid response | Fake analyzer ném code `INVALID_RESPONSE` | HTTP 503; JSON code `INVALID_RESPONSE` | NOT RUN |
-| IT-IDENTIFY-010 | Lỗi không xác định | Fake analyzer ném `Error` thông thường | HTTP 500; JSON code `INTERNAL_ERROR`; không lộ stack trace | NOT RUN |
+| Test ID         | Tình huống                | HTTP request / Thiết lập                                                                     | Kết quả kỳ vọng                                                              | Trạng thái |
+| --------------- | ------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------- |
+| IT-IDENTIFY-001 | Nhận diện ảnh thành công  | `POST /plants/identify`, multipart field `image`, JPEG hợp lệ; fake analyzer trả kết quả mẫu | HTTP 200; JSON bằng kết quả mẫu; analyzer được gọi với ảnh JPEG đã normalize | NOT RUN    |
+| IT-IDENTIFY-002 | Thiếu ảnh                 | `POST /plants/identify` không đính kèm file                                                  | HTTP 400; JSON báo thiếu ảnh; analyzer không được gọi                        | NOT RUN    |
+| IT-IDENTIFY-003 | Sai tên field upload      | Đính kèm file ở field khác `image`                                                           | HTTP 400 từ Multer; JSON `UPLOAD_ERROR` theo middleware hiện tại             | NOT RUN    |
+| IT-IDENTIFY-004 | Ảnh vượt dung lượng       | Đính kèm ảnh lớn hơn `MAX_IMAGE_MB`                                                          | HTTP 413 nếu đã áp dụng thay đổi đề xuất; JSON code `IMAGE_TOO_LARGE`        | NOT RUN    |
+| IT-IDENTIFY-005 | Bytes ảnh không hợp lệ    | Field `image` chứa bytes không phải ảnh                                                      | HTTP 400; JSON code `INVALID_IMAGE`; analyzer không được gọi                 | NOT RUN    |
+| IT-IDENTIFY-006 | Provider rate limited     | Fake analyzer ném `PlantAnalyzerError` code `RATE_LIMITED`                                   | HTTP 429; JSON code `RATE_LIMITED`                                           | NOT RUN    |
+| IT-IDENTIFY-007 | Provider timeout          | Fake analyzer ném code `TIMEOUT`                                                             | HTTP 504; JSON code `TIMEOUT`                                                | NOT RUN    |
+| IT-IDENTIFY-008 | Provider unavailable      | Fake analyzer ném code `UNAVAILABLE`                                                         | HTTP 503; JSON code `UNAVAILABLE`                                            | NOT RUN    |
+| IT-IDENTIFY-009 | Provider invalid response | Fake analyzer ném code `INVALID_RESPONSE`                                                    | HTTP 503; JSON code `INVALID_RESPONSE`                                       | NOT RUN    |
+| IT-IDENTIFY-010 | Lỗi không xác định        | Fake analyzer ném `Error` thông thường                                                       | HTTP 500; JSON code `INTERNAL_ERROR`; không lộ stack trace                   | NOT RUN    |
 
 **Lưu ý xác nhận contract:** Nếu middleware hiện tại vẫn trả HTTP 400 cho `LIMIT_FILE_SIZE`, cập nhật kết quả kỳ vọng của IT-IDENTIFY-004 theo quyết định API đã chốt, hoặc sửa middleware sang 413 trước khi chạy. Không ghi FAIL chỉ vì tài liệu và implementation chưa thống nhất.
 
@@ -104,15 +104,15 @@ Khi bổ sung test, lưu log thực thi và tên file test thực tế vào bả
 
 ## 6. Execution log — cập nhật sau mỗi lần chạy
 
-| Run ID | Ngày/giờ | Commit SHA | Môi trường | Lệnh / Suite | Tổng | Pass | Fail | Skip | Bằng chứng |
-|---|---|---|---|---|---:|---:|---:|---:|---|
-| RUN-001 | Chưa thực thi | Chưa ghi nhận | Local Windows | Unit + Integration | — | — | — | — | Chưa có log |
+| Run ID  | Ngày/giờ      | Commit SHA    | Môi trường    | Lệnh / Suite       | Tổng | Pass | Fail | Skip | Bằng chứng  |
+| ------- | ------------- | ------------- | ------------- | ------------------ | ---: | ---: | ---: | ---: | ----------- |
+| RUN-001 | Chưa thực thi | Chưa ghi nhận | Local Windows | Unit + Integration |    — |    — |    — |    — | Chưa có log |
 
 ### Defect log
 
-| Defect ID | Test ID | Mô tả lỗi | Mức độ | Cách tái hiện | Trạng thái |
-|---|---|---|---|---|---|
-| — | — | Chưa ghi nhận defect qua các test case trong báo cáo | — | — | — |
+| Defect ID | Test ID | Mô tả lỗi                                            | Mức độ | Cách tái hiện | Trạng thái |
+| --------- | ------- | ---------------------------------------------------- | ------ | ------------- | ---------- |
+| —         | —       | Chưa ghi nhận defect qua các test case trong báo cáo | —      | —             | —          |
 
 ### Kết luận kiểm thử
 

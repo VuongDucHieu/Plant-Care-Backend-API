@@ -22,9 +22,9 @@ export default tseslint.config(
         'error',
         {
           argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_'
-        }
-      ]
+          varsIgnorePattern: '^_',
+        },
+      ],
     },
   },
 );
