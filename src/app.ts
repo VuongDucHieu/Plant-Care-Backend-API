@@ -12,10 +12,13 @@ import { createPlantRouter } from './http/routes/plant.route.js';
 import { errorHandler } from './http/middlewares/error-handler.middleware.js';
 
 import type { PlantAnalyzer } from './domain/plant-analyzer.js';
-import { healthRouter } from './http/routes/health.route.js';
+
+import { createHealthRouter } from './http/routes/health.route.js';
+import { ReadinessState } from './infra/health/readiness-state.js';
 
 interface CreateAppOptions {
   plantAnalyzer?: PlantAnalyzer;
+  readinessState?: ReadinessState;
 }
 
 export function createApp(options: CreateAppOptions = {}) {
@@ -47,7 +50,9 @@ export function createApp(options: CreateAppOptions = {}) {
   });
 
   //6. Register routes
-  app.use('/health', healthRouter);
+  const readinessState = options.readinessState ?? new ReadinessState();
+  app.use('/health', createHealthRouter(readinessState));
+
   app.use('/plants', plantRouter);
 
   //7. Central error handler
