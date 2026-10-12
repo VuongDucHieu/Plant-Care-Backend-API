@@ -14,6 +14,8 @@ const server = app.listen(env.PORT, env.HOST, () => {
   console.log(`Plant Care API is running at http://${env.HOST}:${env.PORT}`);
 });
 
+const SHUTDOWN_TIMEOUT = 10000;
+
 let isShuttingDown = false;
 
 function shutdown(signal: string): void {
@@ -28,8 +30,18 @@ function shutdown(signal: string): void {
   //1. Đánh dấu instance không sẵn sàng
   readinessState.markNotReady();
 
+  const shutdownTimer = setTimeout(() => {
+    console.error('Shutdown deadline exceed');
+
+    server.closeAllConnections();
+
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT);
+
   //2. Ngừng nhận kết nối mới và chờ kết nối hiện tại hoàn thành
   server.close((error?: Error) => {
+    clearTimeout(shutdownTimer);
+
     if (error) {
       console.log('Error while closing the server:', error);
       process.exitCode = 1;
