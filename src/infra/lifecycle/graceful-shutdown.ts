@@ -15,6 +15,7 @@ export function createGracefulShutdown({
     timeoutMs
 }: ShutdownDependencies) {
     let isShuttingDown = false;
+    let isFinished = false;
 
     return function shutdown(signal: string): void {
         if (isShuttingDown) {
@@ -22,30 +23,46 @@ export function createGracefulShutdown({
         }
 
         isShuttingDown = true;
+        readinessState.markNotReady();
 
         console.log(`Received ${signal}. Shutting down gracefully...`);
 
-        readinessState.markNotReady();
+        let shutdownTimer: ReturnType<typeof setTimeout> | undefined;
 
-        const shutdownTimer = setTimeout(() => {
-            console.log('Shutdown deadline exceeded!');
+        function finish(code: number): void {
+            if (isFinished) return;
 
-            server.closeAllConnections();
+            isFinished = true;
 
-            exit(1);
+            if (shutdownTimer) {
+                clearTimeout(shutdownTimer);
+            }
+
+            exit(code);
+        }
+
+        shutdownTimer = setTimeout(() => {
+            console.error('Shutdown deadline exceeded');
+
+            try {
+                server.closeAllConnections();
+
+            } catch (error) {
+                console.error('Failed to force close HTTP connections:', error);
+            } finally {
+                finish(1);
+            }
         }, timeoutMs)
 
         server.close((error?: Error) => {
-            clearTimeout(shutdownTimer);
-
             if (error) {
-                console.error('Error while closing HTTP server: ', error);
-                exit(1);
+                console.error('Error closing HTTP server: ', error);
+                finish(1);
                 return;
             }
 
             console.log('HTTP server closed successfully');
-            exit(0)
+            finish(0);
         });
     };
 }
