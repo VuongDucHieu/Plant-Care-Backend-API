@@ -1,5 +1,5 @@
 import type { Server } from 'node:http';
-import type { ReadinessState } from '../health/readiness-state.js'
+import type { ReadinessState } from '../health/readiness-state.js';
 
 interface ShutdownDependencies {
     server: Pick<Server, 'close' | 'closeAllConnections'>;
@@ -46,13 +46,12 @@ export function createGracefulShutdown({
 
             try {
                 server.closeAllConnections();
-
             } catch (error) {
                 console.error('Failed to force close HTTP connections:', error);
             } finally {
                 finish(1);
             }
-        }, timeoutMs)
+        }, timeoutMs);
 
         server.close((error?: Error) => {
             if (error) {
