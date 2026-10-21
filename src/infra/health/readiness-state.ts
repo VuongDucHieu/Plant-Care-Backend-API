@@ -1,15 +1,15 @@
 export class ReadinessState {
-    private ready = false;
+  private ready = false;
 
-    markReady(): void {
-        this.ready = true;
-    }
+  markReady(): void {
+    this.ready = true;
+  }
 
-    markNotReady(): void {
-        this.ready = false;
-    }
+  markNotReady(): void {
+    this.ready = false;
+  }
 
-    isReady(): boolean {
-        return this.ready;
-    }
+  isReady(): boolean {
+    return this.ready;
+  }
 }

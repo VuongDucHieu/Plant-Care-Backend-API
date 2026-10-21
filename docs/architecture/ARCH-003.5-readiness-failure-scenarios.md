@@ -14,14 +14,14 @@ Thiết kế cách Plant Care Backend API xử lý lỗi của external dependen
 
 ## 3. Failure Scenarios
 
-| Scenario | Liveness | Readiness | Identify |
-|---|---|---|---|
-| Normal operation | 200 | 200 | Available |
-| Gemini unavailable | 200 | 200 | 503 |
-| Gemini timeout | 200 | 200 | 504 |
-| Gemini rate limited | 200 | 200 | 429 |
-| Graceful shutdown | 200 nếu còn phản hồi | 503 nếu còn phản hồi | Đang ngừng phục vụ |
-| Process stopped | Unreachable | Unreachable | Unreachable |
+| Scenario            | Liveness             | Readiness            | Identify           |
+| ------------------- | -------------------- | -------------------- | ------------------ |
+| Normal operation    | 200                  | 200                  | Available          |
+| Gemini unavailable  | 200                  | 200                  | 503                |
+| Gemini timeout      | 200                  | 200                  | 504                |
+| Gemini rate limited | 200                  | 200                  | 429                |
+| Graceful shutdown   | 200 nếu còn phản hồi | 503 nếu còn phản hồi | Đang ngừng phục vụ |
+| Process stopped     | Unreachable          | Unreachable          | Unreachable        |
 
 Các trạng thái trên mô tả chính sách và hành vi kỳ vọng; không thay thế việc kiểm chứng runtime.
 

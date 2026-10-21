@@ -55,11 +55,9 @@ describe('Graceful Shutdown', () => {
       const readinessState = new ReadinessState();
       readinessState.markReady();
 
-      const close = vi.fn(
-        (_callback: (error?: Error) => void) => {
-          // Không gọi callback ngay
-        },
-      );
+      const close = vi.fn((_callback: (error?: Error) => void) => {
+        // Không gọi callback ngay
+      });
 
       const closeAllConnections = vi.fn();
       const mockExit = vi.fn();

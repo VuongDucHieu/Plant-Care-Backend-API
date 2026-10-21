@@ -121,6 +121,21 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
   }
 
   private mapProviderError(error: unknown): PlantAnalyzerError {
+    if (process.env.NODE_ENV !== 'production') {
+      if (error instanceof Error) {
+        console.error('[Gemini Error]', {
+          name: error.name,
+          message: error.message,
+          status: error instanceof ApiError ? error.status : undefined,
+          cause: error.cause,
+        });
+      } else {
+        console.error('[Gemini Error]', {
+          type: typeof error,
+        })
+      }
+    }
+
     if (error instanceof TimeoutError) {
       return new PlantAnalyzerError('Gemini request timeout', 'TIMEOUT');
     }

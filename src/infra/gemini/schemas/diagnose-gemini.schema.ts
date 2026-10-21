@@ -10,7 +10,7 @@ export const diagnoseGeminiSchema = {
         },
         scientificName: {
           type: 'string',
-        }
+        },
       },
       required: ['commonName', 'scientificName'],
     },
