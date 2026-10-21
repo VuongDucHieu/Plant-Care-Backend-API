@@ -33,11 +33,11 @@ Multer → Controller → UseCase → Sharp normalize → PlantAnalyzer/Gemini �
 
 ## 4. Sai sót và cách sửa
 
-| Vấn đề | Phát hiện | Cách xử lý / bài học |
-|---|---|---|
-| ENV chưa cấu hình đúng | API trả `UNKNOWN` | Kiểm tra cấu hình runtime trước khi sửa architecture |
-| Nhầm thứ tự xử lý | Đặt normalize sau Gemini khi giải thích | Normalize phải thực hiện trước lời gọi provider |
-| Giải thích lý do dùng object chưa đủ | Chỉ dựa vào HTTP có hai field | Object biểu diễn semantic của `plantImage` và `diseaseImage` |
+| Vấn đề                               | Phát hiện                               | Cách xử lý / bài học                                         |
+| ------------------------------------ | --------------------------------------- | ------------------------------------------------------------ |
+| ENV chưa cấu hình đúng               | API trả `UNKNOWN`                       | Kiểm tra cấu hình runtime trước khi sửa architecture         |
+| Nhầm thứ tự xử lý                    | Đặt normalize sau Gemini khi giải thích | Normalize phải thực hiện trước lời gọi provider              |
+| Giải thích lý do dùng object chưa đủ | Chỉ dựa vào HTTP có hai field           | Object biểu diễn semantic của `plantImage` và `diseaseImage` |
 
 ## 5. Chưa thực hiện
 
@@ -49,12 +49,12 @@ Multer → Controller → UseCase → Sharp normalize → PlantAnalyzer/Gemini �
 
 ## 6. Nhật ký xác minh
 
-| Hoạt động | Lệnh / phương pháp | Kết quả | Bằng chứng |
-|---|---|---|---|
-| TypeScript | `pnpm typecheck` | Chưa ghi nhận | Điền log/PR |
-| ESLint | `pnpm lint` | Chưa ghi nhận | Điền log/PR |
-| Diagnose | Postman, hai file ảnh | JSON hợp lệ đã được cung cấp | Gắn screenshot đã ẩn dữ liệu nhạy cảm |
-| Load test | Chưa chạy | Chưa có | Không áp dụng |
+| Hoạt động  | Lệnh / phương pháp    | Kết quả                      | Bằng chứng                            |
+| ---------- | --------------------- | ---------------------------- | ------------------------------------- |
+| TypeScript | `pnpm typecheck`      | Chưa ghi nhận                | Điền log/PR                           |
+| ESLint     | `pnpm lint`           | Chưa ghi nhận                | Điền log/PR                           |
+| Diagnose   | Postman, hai file ảnh | JSON hợp lệ đã được cung cấp | Gắn screenshot đã ẩn dữ liệu nhạy cảm |
+| Load test  | Chưa chạy             | Chưa có                      | Không áp dụng                         |
 
 ## 7. Bước tiếp theo
 

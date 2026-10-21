@@ -54,13 +54,13 @@ flowchart TD
 
 ## 6. Nhận diện rủi ro (giả thuyết, chưa đo)
 
-| Rủi ro | Vì sao cần quan sát | Cách kiểm chứng tương lai |
-|---|---|---|
-| Gemini quota / 429 | External API có giới hạn sử dụng | Thử với mock/stub; kiểm tra mã lỗi provider |
-| Gemini latency / timeout | Request đồng bộ phải chờ provider | Đo p50/p95 và timeout dưới tải kiểm soát |
-| CPU/RAM xử lý ảnh | Sharp tiêu thụ tài nguyên | Đo CPU, RAM và event loop lag |
-| File upload lớn | Tăng memory/latency và bề mặt tấn công | Kiểm tra giới hạn file, MIME và ảnh lỗi |
-| Một backend instance | Nếu tiến trình dừng thì API không phục vụ | Mô phỏng restart và quan sát downtime |
+| Rủi ro                   | Vì sao cần quan sát                       | Cách kiểm chứng tương lai                   |
+| ------------------------ | ----------------------------------------- | ------------------------------------------- |
+| Gemini quota / 429       | External API có giới hạn sử dụng          | Thử với mock/stub; kiểm tra mã lỗi provider |
+| Gemini latency / timeout | Request đồng bộ phải chờ provider         | Đo p50/p95 và timeout dưới tải kiểm soát    |
+| CPU/RAM xử lý ảnh        | Sharp tiêu thụ tài nguyên                 | Đo CPU, RAM và event loop lag               |
+| File upload lớn          | Tăng memory/latency và bề mặt tấn công    | Kiểm tra giới hạn file, MIME và ảnh lỗi     |
+| Một backend instance     | Nếu tiến trình dừng thì API không phục vụ | Mô phỏng restart và quan sát downtime       |
 
 **Không kết luận bottleneck khi chưa có số liệu.**
 

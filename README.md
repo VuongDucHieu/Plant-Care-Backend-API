@@ -6,11 +6,11 @@ Xây dựng API nhận diện cây trồng (**Identify**) và hỗ trợ chẩn 
 
 ## 2. API hiện tại
 
-| Endpoint | Mục đích | Đầu vào |
-|---|---|---|
-| `POST /plants/identify` | Nhận diện và đưa ra thông tin chăm sóc | Một file `image` |
-| `POST /plants/diagnose` | Phân tích tình trạng và gợi ý xử lý | Hai file `plantImage`, `diseaseImage` |
-| `GET /health` | Kiểm tra HTTP health endpoint | Không có ảnh |
+| Endpoint                | Mục đích                               | Đầu vào                               |
+| ----------------------- | -------------------------------------- | ------------------------------------- |
+| `POST /plants/identify` | Nhận diện và đưa ra thông tin chăm sóc | Một file `image`                      |
+| `POST /plants/diagnose` | Phân tích tình trạng và gợi ý xử lý    | Hai file `plantImage`, `diseaseImage` |
+| `GET /health`           | Kiểm tra HTTP health endpoint          | Không có ảnh                          |
 
 ## 3. Công nghệ và vai trò
 
@@ -28,17 +28,17 @@ Xem [Phân tích kiến trúc hiện tại](docs/architecture/01-current-archite
 
 ## 5. Lộ trình phát triển
 
-| Giai đoạn | Trọng tâm | Trạng thái |
-|---|---|---|
-| ARCH-001 | Kiến trúc hiện trạng, sơ đồ, ADR, nhật ký | Đang thực hiện |
-| Database | PostgreSQL, schema, migration, index | Chưa bắt đầu |
-| Reliability | Timeout, retry, rate limit, lỗi provider | Chưa đánh giá đầy đủ |
-| Async processing | Queue, worker, idempotency | Chưa bắt đầu |
-| Performance | Benchmark, p95, throughput, bottleneck | Chưa bắt đầu |
-| Infrastructure | Linux, Docker, Nginx, deployment | Chưa bắt đầu |
-| Scaling | Scale dọc/ngang, load balancing | Chưa bắt đầu |
-| Observability | Logs, metrics, tracing, alerting | Chưa bắt đầu |
-| Security | Auth, secret, upload security, backup | Chưa bắt đầu |
+| Giai đoạn        | Trọng tâm                                 | Trạng thái           |
+| ---------------- | ----------------------------------------- | -------------------- |
+| ARCH-001         | Kiến trúc hiện trạng, sơ đồ, ADR, nhật ký | Đang thực hiện       |
+| Database         | PostgreSQL, schema, migration, index      | Chưa bắt đầu         |
+| Reliability      | Timeout, retry, rate limit, lỗi provider  | Chưa đánh giá đầy đủ |
+| Async processing | Queue, worker, idempotency                | Chưa bắt đầu         |
+| Performance      | Benchmark, p95, throughput, bottleneck    | Chưa bắt đầu         |
+| Infrastructure   | Linux, Docker, Nginx, deployment          | Chưa bắt đầu         |
+| Scaling          | Scale dọc/ngang, load balancing           | Chưa bắt đầu         |
+| Observability    | Logs, metrics, tracing, alerting          | Chưa bắt đầu         |
+| Security         | Auth, secret, upload security, backup     | Chưa bắt đầu         |
 
 ## 6. Theo dõi quá trình thực hiện
 

@@ -6,7 +6,7 @@ import { createGracefulShutdown } from './infra/lifecycle/graceful-shutdown.js';
 const readinessState = new ReadinessState();
 
 const app = createApp({
-  readinessState
+  readinessState,
 });
 
 const server = app.listen(env.PORT, env.HOST, () => {
