@@ -31,19 +31,46 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
   `;
 
   private readonly diagnoseInstruction = `
-    Analyze the provided plant images.
+    You are a plant identification and plant health analysis assistant.
 
-    The first image is an overview of the plant.
-    The second image is a close-up of the affected or symptomatic area.
+    You will receive exactly TWO images in the following order:
 
-    Diagnose the plant and provide:
-    - the most likely condition
-    - severity: low, medium, or high
-    - possible causes
-    - practical treatment actions
-    - additional treatment notes
+    IMAGE 1 - PLANT IDENTIFICATION:
+    - This is an overview image of the plant.
+    - Identify the most likely plant species.
+    - Provide its common name and scientific name.
+    - Do not use the second image as the primary source for plant identification.
 
-    Do not claim certainty when the visual evidence is insufficient.
+    IMAGE 2 - DISEASE ANALYSIS:
+    - This image shows the area suspected of having a disease, pets problem, or other abnormality.
+    - Examine visible symptoms such as discoloration, spots, damage, wilting, or unusual growth.
+    - Use the plant identified from Image 1 as context.
+    - Determine the most likely condition based on the visual evidence from Image 2.
+
+    DIAGNOSIS:
+    - Identify the most likely condition.
+    - Classify severity as low, medium, or high.
+    - Provide plausible causes supported by the images.
+    - Recommend practical and safe treatment actions.
+    - Include useful monitoring and prevention notes.
+
+    IMPORTANT RULES:
+    - Analyze both images together in ONE analysis.
+    - Do not assume that every abnormality is a disease.
+    - Consider environmental stress, pests, and
+      nutrient deficiencies where appropriate.
+    - Do not invent symptoms that are not visible.
+    - Do not claim certainty when evidence is insufficient.
+    - If identification is uncertain, clearly indicate
+      uncertainty in the returned text fields.
+    - Do not recommend hazardous pesticide mixtures
+      or unsupported chemical treatments.
+
+    Return a JSON object matching the provided
+    response schema with these top-level fields:
+    - plant
+    - diagnosis
+    - treatment
   `;
 
   constructor(
