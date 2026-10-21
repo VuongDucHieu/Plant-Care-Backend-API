@@ -28,6 +28,10 @@ export type IdentifyPlantResult = {
 };
 
 //===== DIAGNOSE =====
+export type DiagnosedPlantIdentity = {
+  commonName: string;
+  scientificName: string;
+}
 
 export type PlantDiagnosis = {
   condition: string;
@@ -41,9 +45,10 @@ export type TreatmentPlan = {
 };
 
 export type DiagnosePlantResult = {
+  plant: DiagnosedPlantIdentity;
   diagnosis: PlantDiagnosis;
-  treatment: TreatmentPlan;
-};
+  treatmen: TreatmentPlan;
+}
 
 //===== ERROR =====
 export type PlantAnalyzerErrorCode =
