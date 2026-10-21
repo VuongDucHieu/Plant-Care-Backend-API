@@ -47,7 +47,7 @@ export type TreatmentPlan = {
 export type DiagnosePlantResult = {
   plant: DiagnosedPlantIdentity;
   diagnosis: PlantDiagnosis;
-  treatmen: TreatmentPlan;
+  treatment: TreatmentPlan;
 }
 
 //===== ERROR =====
