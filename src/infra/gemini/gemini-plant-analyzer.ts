@@ -42,7 +42,7 @@ export class GeminiPlantAnalyzer implements PlantAnalyzer {
     - Do not use the second image as the primary source for plant identification.
 
     IMAGE 2 - DISEASE ANALYSIS:
-    - This image shows the area suspected of having a disease, pets problem, or other abnormality.
+    - This image shows the area suspected of having a disease, pest problem, or other abnormality.
     - Examine visible symptoms such as discoloration, spots, damage, wilting, or unusual growth.
     - Use the plant identified from Image 1 as context.
     - Determine the most likely condition based on the visual evidence from Image 2.
