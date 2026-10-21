@@ -2,6 +2,19 @@ export const diagnoseGeminiSchema = {
   type: 'object',
 
   properties: {
+    plant: {
+      type: 'object',
+      properties: {
+        commonName: {
+          type: 'string',
+        },
+        scientificName: {
+          type: 'string',
+        }
+      },
+      required: ['commonName', 'scientificName'],
+    },
+
     diagnosis: {
       type: 'object',
 
@@ -49,5 +62,5 @@ export const diagnoseGeminiSchema = {
     },
   },
 
-  required: ['diagnosis', 'treatment'],
+  required: ['plant', 'diagnosis', 'treatment'],
 };

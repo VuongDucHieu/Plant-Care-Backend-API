@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
 export const diagnoseResponseSchema = z.object({
+  plant: z.object({
+    commonName: z.string(),
+    scientificName: z.string(),
+  }),
+
   diagnosis: z.object({
     condition: z.string(),
 
