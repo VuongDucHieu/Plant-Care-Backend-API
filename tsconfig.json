@@ -15,6 +15,6 @@
     "sourceMap": true,
     "types": ["node", "express", "multer"]
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/shared/async/test.js"],
   "exclude": ["node_modules", "dist"]
 }

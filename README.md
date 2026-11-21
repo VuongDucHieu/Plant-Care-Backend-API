@@ -24,7 +24,7 @@ Xây dựng API nhận diện cây trồng (**Identify**) và hỗ trợ chẩn 
 
 Một **backend application duy nhất**, có các ranh giới HTTP → Application → Domain và Infrastructure adapters. Đây là mô tả về cách tổ chức code và deployment hiện tại, **không đồng nghĩa** đã áp dụng đầy đủ mọi nguyên tắc Clean Architecture.
 
-Xem [Phân tích kiến trúc hiện tại](docs/architecture/01-current-architecture.md) và [ADR-001](docs/decisions/ADR-001-modular-monolith.md).
+Xem [Phân tích kiến trúc hiện tại](docs/architecture/01-current-architecture.md) và [ADR-001](docs/decisions/ADR-001-modular-monolith.md). Toàn bộ chỉ mục tài liệu nằm tại [docs/README.md](docs/README.md).
 
 ## 5. Lộ trình phát triển
 
