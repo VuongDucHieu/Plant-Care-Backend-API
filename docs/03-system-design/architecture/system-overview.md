@@ -66,7 +66,7 @@ flowchart TD
 
 ## 7. Quyết định hiện tại
 
-Giữ một backend deployable và các abstraction đã có. Chưa bổ sung microservices, queue, cache hoặc load balancer khi chưa xác định vấn đề cụ thể. Xem [ADR-001](../decisions/ADR-001-modular-monolith.md).
+Giữ một backend deployable và các abstraction đã có. Chưa bổ sung microservices, queue, cache hoặc load balancer khi chưa xác định vấn đề cụ thể. Xem [ADR-001](../../06-decisions/architecture/ADR-001-modular-monolith.md).
 
 ## 8. Việc cần xác minh trước khi đóng checkpoint
 

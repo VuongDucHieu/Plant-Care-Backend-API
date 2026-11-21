@@ -51,6 +51,6 @@ Backoff bảo vệ dependency tốt hơn fixed delay trong outage dài, nhưng l
 
 ## 10. Related ADR
 
-[ADR-008 — Exponential backoff](../../decisions/ADR-008-exponential-backoff.md)
+[ADR-008 — Exponential backoff](../../06-decisions/architecture/ADR-008-exponential-backoff.md)
 
 > Trạng thái: Proposed. Repository hiện chưa implement exponential backoff.

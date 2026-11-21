@@ -33,4 +33,4 @@ Delay tăng dần giảm tốc độ dồn request vào dependency đang gặp l
 
 ## Follow-up considerations
 
-Chọn `maxDelayMs`, đơn vị retry index và metrics dựa trên dữ liệu vận hành trước khi implement. Xem [reliability/backoff](../engineering/reliability/backoff.md).
+Chọn `maxDelayMs`, đơn vị retry index và metrics dựa trên dữ liệu vận hành trước khi implement. Xem [reliability/backoff](../../03-system-design/reliability/backoff.md).

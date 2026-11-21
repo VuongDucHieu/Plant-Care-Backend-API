@@ -47,6 +47,6 @@ Không có source code jitter hiện tại. Vị trí hợp lý nếu triển kh
 
 ## 10. Related ADR
 
-[ADR-009 — Jitter strategy](../../decisions/ADR-009-jitter-strategy.md)
+[ADR-009 — Jitter strategy](../../06-decisions/architecture/ADR-009-jitter-strategy.md)
 
 > Trạng thái: Proposed. Repository hiện chưa implement jitter.
