@@ -57,4 +57,4 @@ Deadline ngắn giảm thời gian chờ nhưng có thể cắt request hợp l�
 
 ## 10. Related ADR
 
-[ADR-005 — Timeout và cancellation](../../decisions/ADR-005-timeout-and-cancellation.md)
+[ADR-005 — Timeout và cancellation](../../06-decisions/architecture/ADR-005-timeout-and-cancellation.md)

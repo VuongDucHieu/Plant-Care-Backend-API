@@ -34,4 +34,4 @@ Retry có điều kiện có thể cải thiện khả năng phục hồi với 
 
 ## Follow-up considerations
 
-Chốt retryable error set, timeout budget, observability và kiểm thử trước khi implement. Xem [reliability/retry](../engineering/reliability/retry.md).
+Chốt retryable error set, timeout budget, observability và kiểm thử trước khi implement. Xem [reliability/retry](../../03-system-design/reliability/retry.md).

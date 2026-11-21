@@ -56,4 +56,4 @@ Retry tăng xác suất thành công của lỗi ngắn hạn, đổi lại late
 
 ## 10. Related ADR
 
-[ADR-007 — Retry policy](../../decisions/ADR-007-retry-policy.md)
+[ADR-007 — Retry policy](../../06-decisions/architecture/ADR-007-retry-policy.md)

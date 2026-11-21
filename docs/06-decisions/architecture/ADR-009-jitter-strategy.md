@@ -33,4 +33,4 @@ Full jitter đơn giản, phân tán retry và tránh một nhịp retry cố đ
 
 ## Follow-up considerations
 
-Xác định random source, observability cho delay thực tế và cách test deterministic trước khi implement. Xem [reliability/jitter](../engineering/reliability/jitter.md).
+Xác định random source, observability cho delay thực tế và cách test deterministic trước khi implement. Xem [reliability/jitter](../../03-system-design/reliability/jitter.md).
