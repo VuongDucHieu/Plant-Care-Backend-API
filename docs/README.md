@@ -1,46 +1,38 @@
-# Plant Care Platform Documentation
+# Plant Care Backend API — Documentation
 
-This directory contains the product, business, and techinal documentation for the Plant Care Platform
+Điểm bắt đầu để đọc tài liệu sản phẩm, kiến trúc và quyết định kỹ thuật của repository.
 
-## Document Structure
+## Kiến trúc
 
-### Product
+- [Kiến trúc hiện tại](architecture/01-current-architecture.md)
+- [Vòng đời HTTP request](architecture/02-request-lifecycle.md)
+- [Dependency injection trong `createApp()`](architecture/03-dependency-injection.md)
+- [Tích hợp Gemini và xử lý response](architecture/04-gemini-integration.md)
+- [Readiness và failure scenarios](architecture/ARCH-003.5-readiness-failure-scenarios.md)
 
-Defines what the product is, who it serves, and which problems it solves.
+## Architecture Decision Records
 
-- `product/product-overview.md`
-- `product/user-stories.md`
+- [ADR index](decisions/README.md)
 
-### Requirement
+## Reliability engineering
 
-Contains feature-level requirement and acceptance criteria.
+- [Tổng quan reliability](engineering/reliability/README.md)
+- [Timeout và cancellation](engineering/reliability/timeout.md)
+- [Retry](engineering/reliability/retry.md)
+- [Exponential backoff](engineering/reliability/backoff.md)
+- [Jitter](engineering/reliability/jitter.md)
 
-Each feature is tracked using an issue ID:
+## Sản phẩm, yêu cầu và kiểm thử
 
-`PLANT-XXX`
+- [Product overview](product/product-overview.md)
+- [Yêu cầu Identify Plant](requirements/identify-plant.md)
+- [Workflow test Identify](testing/identify-usecase-workflow.md)
+- [Workflow test Diagnose](testing/diagnose-usecase-workflow.md)
 
-Example:
+## Engineering journal
 
-`PLANT-124-identify-plant.md`
+- [Architecture baseline](journal/001-architecture-baseline.md)
 
-### Architecture
+## Cách dùng chỉ mục này
 
-Technical architecture and Architecture Decision Records (ADRs) will be added when architectural decisions are introduced.
-
-### API
-
-API contracts will be documents as HTTP capabilities are implemented.
-
-## Development Flow
-
-Each feature follows this flow:
-
-Product Problem
-
-- User Story
-- Acceptance Criteria
-- API contract
-- Technical Design
-- Implementation
-- Tests
-- Acceptance Verification
+Người mới nên đọc kiến trúc hiện tại, vòng đời request, rồi đến ADR index để thấy rõ phần nào đã được source code thực thi và phần nào vẫn là đề xuất. Tài liệu reliability giữ riêng các cơ chế đang có và các thiết kế dự kiến, không xem thiết kế dự kiến là hành vi runtime.
