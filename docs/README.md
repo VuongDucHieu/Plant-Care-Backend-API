@@ -1,38 +1,75 @@
-# Plant Care Backend API — Documentation
+# Plant Care — Documentation Hub
 
-Điểm bắt đầu để đọc tài liệu sản phẩm, kiến trúc và quyết định kỹ thuật của repository.
+> **Purpose:** One navigation point for product, BA requirements, system design, API, testing and decisions. For **code currently implemented**, begin at the root [README](../README.md) and API overview. `Draft` and `Planned` do not imply deployed behavior.
 
-## Thiết kế hệ thống
+## Start here
 
-- [Tổng quan hệ thống](03-system-design/architecture/system-overview.md)
-- [Luồng HTTP request](03-system-design/architecture/request-flow.md)
-- [Component design và dependency injection](03-system-design/architecture/component-design.md)
-- [Tích hợp Gemini](03-system-design/integrations/gemini-integration.md)
-- [Readiness và failure scenarios](03-system-design/reliability/failure-handling.md)
+```mermaid
+flowchart LR
+  V["Product: Why"] --> BA["Business Analysis: What"]
+  BA --> SD["System Design: How"]
+  SD --> API["API: Contracts"]
+  API --> TEST["Testing: Verify"]
+  D["Decision Records: Why this choice"] -.-> BA
+  D -.-> SD
+```
 
-## Architecture Decision Records
+## 01 — Product
 
-- [ADR index](06-decisions/README.md)
+- [Product Vision](01-product/product-vision.md) — users, problems, value, product capability status.
+- [BACCM Analysis](01-product/baccm-analysis.md) — Change, Need, Solution, Stakeholders, Value, Context.
+- [Stakeholder Analysis](01-product/stakeholders.md) — roles, involvement, RACI draft.
+- [Roadmap & MVP Scope](01-product/roadmap.md) — suggested feature delivery order.
 
-## Reliability engineering
+## 02 — Business Analysis
 
-- [Tổng quan reliability](03-system-design/reliability/README.md)
-- [Timeout và cancellation](03-system-design/reliability/timeout.md)
-- [Retry](03-system-design/reliability/retry.md)
-- [Exponential backoff](03-system-design/reliability/backoff.md)
-- [Jitter](03-system-design/reliability/jitter.md)
+- [Business Requirements](02-business-analysis/requirements/business-requirements.md) — business outcomes and traceability.
+- [Business Rules](02-business-analysis/requirements/business-rules.md) — decisions and task state machine.
+- [Non-functional Requirements](02-business-analysis/requirements/non-functional-requirements.md) — qualities, unknown thresholds, review gates.
+- [User Journey](02-business-analysis/processes/user-journey.md) — as-is hypothesis, to-be journey, rejection branch.
+- [Plant Identification](02-business-analysis/features/plant-identification.md) — existing draft feature/API acceptance requirements.
+- [Plant Diagnosis](02-business-analysis/features/plant-diagnosis.md) — existing Diagnose behavior and planned history.
+- [Care Planning & Tracking](02-business-analysis/features/care-planning.md) — approved product discovery decisions, planned feature, acceptance criteria.
 
-## Sản phẩm, yêu cầu và kiểm thử
+## 03 — System Design
 
-- [Product vision](01-product/product-vision.md)
-- [Yêu cầu Identify Plant](02-business-analysis/features/plant-identification.md)
-- [Test scenarios: Identify](05-testing/test-scenarios.md)
-- [Workflow test Diagnose](05-testing/diagnose-usecase-workflow.md)
+- [Architecture overview](03-system-design/architecture/system-overview.md)
+- [Component design](03-system-design/architecture/component-design.md)
+- [HTTP request flow](03-system-design/architecture/request-flow.md)
+- [Gemini integration](03-system-design/integrations/gemini-integration.md)
+- [Reliability index](03-system-design/reliability/README.md)
+- [Failure scenarios](03-system-design/reliability/failure-handling.md)
+- [Architecture baseline / historical checkpoint](03-system-design/architecture/architecture-baseline.md)
+- `database/` — database design **not yet authored**; do not infer implementation from folder existence.
 
-## Engineering journal
+## 04 — API
 
-- [Architecture baseline](03-system-design/architecture/architecture-baseline.md)
+- [Existing API overview and error mapping](04-api/api-overview.md) — source-based HTTP endpoints; planned Care APIs excluded.
 
-## Cách dùng chỉ mục này
+## 05 — Testing
 
-Người mới nên đọc kiến trúc hiện tại, vòng đời request, rồi đến ADR index để thấy rõ phần nào đã được source code thực thi và phần nào vẫn là đề xuất. Tài liệu reliability giữ riêng các cơ chế đang có và các thiết kế dự kiến, không xem thiết kế dự kiến là hành vi runtime.
+- [Identify use-case testing workflow](05-testing/test-scenarios.md)
+- [Diagnose use-case testing workflow](05-testing/diagnose-usecase-workflow.md)
+- [Existing test report](../tests/docs/plant-care-test-report.md)
+
+## 06 — Decisions
+
+- [Architecture Decision Records](06-decisions/README.md)
+- [Product Decision Register PD-002–PD-012](06-decisions/product/README.md)
+
+## Reading paths
+
+| Audience | Suggested order |
+|---|---|
+| Product Owner / BA | Vision → BACCM → Requirements → User Journey → Feature specs → Product decisions |
+| Developer | Root README → Architecture → API → Feature specs → ADR → Testing |
+| QA / Reviewer | Feature acceptance criteria → Business Rules → API → Testing |
+| Portfolio reviewer | Root README → Vision → Architecture → Care Planning (planned) |
+
+## Documentation rules
+
+1. Keep a single canonical home for each concept; link instead of copy-pasting.
+2. Mark `Implemented` **only when source evidence exists**; distinguish planned and draft content.
+3. Keep future API designs out of current API contracts.
+4. Capture evolving work in GitHub Issues/PRs; preserve durable architecture and business knowledge here.
+5. For new large features, start with one feature spec file; split into subfolders only as needed.
