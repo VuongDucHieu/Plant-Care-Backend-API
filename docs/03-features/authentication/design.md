@@ -1,123 +1,76 @@
-# Authentication — Technical Design and Trade-offs
+# Authentication — Technical Design
 
-**Status:** Proposed, unverified with Prisma 8 RC runtime. **Source baseline:** current GitHub `authentication-design.md`, `prisma-schema-design.md`, and [FSD](fsd.md).
+**Status:** Proposed; subject to approval of [FSD section 8](fsd.md). **Implementation:** Not yet verified. This is the architecture specification, not an implementation report.
 
-## 1. Architecture boundary
+## 1. Boundaries
 
-```mermaid
-flowchart LR
- Client --> Router[Express Router]
- Router --> Controller[Auth Controller]
- Controller --> UseCase[Auth Use Cases]
- UseCase --> UserRepo[User Repository Port]
- UseCase --> SessionRepo[Session/Token Repository Port]
- SessionRepo --> Adapter[Prisma 8 PostgreSQL Adapter]
- UserRepo --> Adapter
- Adapter --> DB[(PostgreSQL)]
-```
+`HTTP Router → Controller (Zod validation) → Use Case → Repository ports → PostgreSQL adapter`.
 
-**Controller:** transport/validation and status mapping. **Use Case:** rotation rules and outcomes. **Repository adapter:** transactions, locking, persistence. Avoid exposing Prisma models as HTTP contracts.
+- HTTP owns input parsing, response mapping, and authentication middleware.
+- Use Cases own register/login/refresh/logout policy; they do not import Express or ORM models.
+- Repository adapter owns atomic transactions, constraints, and PostgreSQL session locking.
+- Password hasher, token issuer/verifier and clock are injected ports for testability.
 
 ## 2. Data ownership and invariants
 
-```mermaid
-erDiagram
-    User ||--o{ Session : owns
-    User ||--o{ Plant : owns
-    Session ||--o{ RefreshToken : has
-    RefreshToken o|--o| RefreshToken : parent_of
+| Entity | Required fields | Invariants |
+|---|---|---|
+| User | id, normalized email, passwordHash, createdAt, updatedAt | Unique normalized email; no plaintext password |
+| Session | id, userId, expiresAt, revokedAt?, revokedReason?, createdAt | Stable across refresh; revoked Session cannot authorize requests |
+| RefreshToken | id, sessionId, parentTokenId?, tokenHash, expiresAt, consumedAt?, revokedAt?, revokedReason?, createdAt | Unique tokenHash; unique nullable parentTokenId; same-session lineage; consumed at most once |
+| Plant | id, ownerId, displayName, identificationSnapshot?, timestamps | Ownership derives from authenticated user ID |
 
-    User {
-        string id PK
-        string email UK
-        string passwordHash
-    }
+`consumedAt` denotes successful rotation; `revokedAt` denotes explicit invalidation. Both may be populated for historical incident records. `revokedReason` must be present iff `revokedAt` is present. A token's `parentTokenId` must reference a token in **the same Session**; a simple FK to token ID does not enforce this. Prefer composite FK `(parentTokenId, sessionId) → (id, sessionId)` with a corresponding unique key, if supported by the emitted migration; otherwise enforce via serialized writes and verify with real PostgreSQL tests. Direct DB writes outside the repository must not bypass this rule.
 
-    Session {
-        string id PK
-        string userId FK
-        datetime expiresAt
-        datetime revokedAt
-        string revokedReason
-    }
+## 3. Credential policy
 
-    RefreshToken {
-        string id PK
-        string sessionId FK
-        string parentTokenId FK
-        string tokenHash UK
-        datetime expiresAt
-        datetime consumedAt
-        datetime revokedAt
-        string revokedReason
-    }
+See [FSD §8](fsd.md) for the canonical numbers and HTTP contracts. Access JWT contains `sub`, `sid`, `iat`, `exp`, issuer and audience. Verify signature, allowed algorithm, issuer, audience, expiry and active Session on every protected request. Use an opaque high-entropy refresh secret, persist only keyed HMAC-SHA-256 verifier using a separate key. Passwords use Argon2id with explicitly configured parameters. Never log raw tokens or passwords.
 
-    Plant {
-        string id PK
-        string ownerId FK
-        string displayName
-    }
-```
+## 4. Rotation algorithm — required transactional semantics
 
-- `Session` is one login context; its ID remains stable through refreshes.
-- `RefreshToken` is one credential generation. `consumedAt` records successful rotation; `revokedAt` records explicit invalidation; expiry is computed from `expiresAt`.
-- `parentTokenId` references prior token ID. `UNIQUE(parentTokenId)` prevents two successor rows for one parent (subject to DB semantics for NULL). A foreign key alone **does not** guarantee parent and child share `sessionId`.
-- Protect the same-session invariant in a serialized transaction and test it; consider a composite FK `(parentTokenId, sessionId) → (id, sessionId)` with a suitable composite unique key if supported by the final Prisma 8 contract/migration.
-- A token can be consumed and later revoked during incident handling. `revokedReason` is controlled by domain validation, not arbitrary client input.
-- A deterministic verifier such as HMAC-SHA-256 keyed with a separate server secret can index random high-entropy refresh tokens; rotate verifier keys carefully. Passwords require a password-specific hash (e.g. Argon2id), not this verifier scheme.
+1. Compute token verifier; locate its RefreshToken row. If unknown, return 401 without revealing existence.
+2. Start transaction and lock the corresponding Session row (`SELECT ... FOR UPDATE` or verified equivalent). Every logout and reuse-revocation path locks the **same row**.
+3. Re-read Session and token **after** obtaining lock; use database time for expiry comparison. If Session inactive or token expired/explicitly revoked, reject without rotation.
+4. If `consumedAt` is already set, mark Session revoked with reason `REUSE_DETECTED` in this transaction, **commit** revocation, then return 401. Do not throw inside a transaction callback in a way that rolls back revocation.
+5. Otherwise conditionally set `consumedAt` only when NULL, token unrevoked and unexpired. Assert exactly one row changed.
+6. Insert child token with `parentTokenId` pointing to the parent and the **same** `sessionId`; ensure parent uniqueness. Commit before returning the new credential.
+7. If child insertion fails, rollback all mutations including `consumedAt`. Never return credentials before commit.
 
-## 3. Refresh transaction and concurrency
+Concurrency result: two requests using T1 may yield one successful rotation and one reuse-triggered Session revocation; the first returned access token becomes unusable on subsequent protected requests. This is the intentional strict policy and UX trade-off. Client must use single-flight refresh; it cannot guarantee against response-loss retries.
 
-```mermaid
-sequenceDiagram
- autonumber
- participant A as Client A
- participant B as Client B
- participant API as API
- participant DB as PostgreSQL
- A->>API: Refresh T1
- B->>API: Refresh T1
- API->>DB: TX A: lock Session, check T1
- DB-->>API: T1 active
- API->>DB: Consume T1, insert T2, COMMIT
- API-->>A: New credentials
- API->>DB: TX B: lock same Session, recheck T1
- DB-->>API: T1 already consumed
- API->>DB: Revoke Session, COMMIT
- API-->>B: 401
- Note over A,B: Strict policy may invalidate A's new session
-```
+## 5. Logout, registration and authorization
 
-**Design obligation:** Both successful rotation and reuse revocation must serialize against the same Session row (or use a proven equivalent). A transaction without a lock/conditional write is not enough. Under `READ COMMITTED`, acquire a row lock before evaluating current state, then re-read the token and Session; enforce conditional consume and successor uniqueness. Prisma 8 RC may require an adapter/raw SQL mechanism; verify actual API and integration tests before committing implementation.
+- Register normalizes email, validates password length, hashes with Argon2id and creates User; no automatic login.
+- Login verifies password with generic failure response and creates Session plus initial RefreshToken atomically.
+- Logout authenticates JWT + active Session, locks Session, sets `revokedAt` and `revokedReason=LOGOUT`, commits and returns 204. A repeated call with revoked JWT returns 401 per MVP policy.
+- `/auth/me` and future My Plants endpoints validate JWT and Session. Queries use `(plantId, authenticatedUserId)`; never accept `ownerId` from the client.
+- Identify/Diagnose remain public during this MVP.
 
-**Security limitation:** A repeated bearer token does not reveal whether it came from attacker or legitimate retry. A grace window may reduce false positives but can weaken theft response. MVP proposal: strict policy and client-side single-flight refresh, with explicit UX cost.
+## 6. Trade-offs
 
-## 4. Alternatives and why
+| Choice | Benefit | Cost |
+|---|---|---|
+| Stable Session + token history | Audit and replay detection | Extra rows, retention responsibility |
+| Strict consumed-token reuse revocation | Strong replay response | Legitimate duplicate refresh can log user out |
+| Session check on every protected request | Subsequent requests reject logged-out sessions | Database read per request |
+| Session row lock + conditional consume | Consistent refresh/logout ordering | Contention and adapter complexity |
+| JSON refresh token for trusted/mobile-style client | Avoid cookie-specific CSRF in MVP | Client must securely store token; unsuitable for unmodified browser SPA |
 
-| Decision | Option A | Option B | Proposed reason |
-|---|---|---|---|
-| Credential lineage | `parentHash` | `parentTokenId` | ID relation avoids coupling to hash format and supports FK |
-| Session model | New Session each refresh | Stable Session + new RefreshToken | Preserves device/login identity and audit history |
-| Token lifecycle | `revokedReason=ROTATION` | Separate `consumedAt` | Consumption is not revocation |
-| Reuse policy | Grace period | Strict revoke affected Session | Stronger theft response, but duplicate-request false positives |
-| Concurrent control | Transaction only | Session lock + conditional consume + unique successor | Prevents double issue and revoke/issue race |
-| Logout enforcement | Check Session on every protected API | Allow access JWT until short TTL | Performance vs immediate revocation; **not decided** |
+## 7. Failure and debugging
 
-## 5. Failure modes and recovery
+- DB unavailable: fail closed; emit safe error and correlation ID.
+- JWT valid but Session revoked: 401.
+- Child insert fails: verify transaction rollback leaves parent unconsumed.
+- Concurrent refresh/logout: capture DB transaction ordering and final Session state; do not log secrets.
+- Prisma 8 RC migration: contract syntax and emitted constraints must be verified locally; this document does **not** assert a particular untested Prisma API for row locking.
 
-- **Insert T2 fails:** Roll back consume of T1. Never return success before commit.
-- **DB unavailable:** Fail closed; no new credential; log correlation ID without raw token.
-- **Response lost after commit:** Client may retry T1 and trigger strict reuse; this is a known usability cost requiring product review.
-- **Concurrent logout and refresh:** Both lock Session; no token should become usable after Session revocation.
-- **Expired Session:** No refresh, even when latest token is unexpired.
-- **Verifier key rotation:** Old token hashes may become unresolvable; plan multi-key verification or deliberate session invalidation.
+## 8. Implementation sequence
 
-## 6. Unresolved decisions before production
+Validate approved specification → update Prisma Contract → emit and inspect migration → apply to isolated disposable DB → PostgreSQL constraints tests → Register/Login → Refresh/Logout → JWT middleware and `/auth/me` → API and concurrency tests. Do not reset a persistent database without explicit confirmation.
 
-Client platform and refresh transport; CSRF protection; TTLs and absolute/idle expiry; session revocation impact on access JWT; password policy; token history retention; incident audit and rate limits; exact PostgreSQL/Prisma 8 RC locking implementation; 401/403/404 API envelope.
+## Idle timeout, logout semantics and composite-FK verification
 
-## 7. Implementation order
-
-(1) Resolve blocking decisions → (2) validate Prisma 8 Contract with `pnpm exec prisma contract emit` → (3) inspect and replace **pending sample User/Post migration**, without applying it → (4) run migration on disposable dev DB after explicit data-safety review → (5) implement Register/Login → (6) Refresh/Logout → (7) integration tests with real PostgreSQL → (8) connect My Plants authorization.
-
-**Do not assume:** `@default(uuid())` works in Prisma 8 RC. The user's CLI explicitly requires `@onCreate(uuid())` for client-generated UUID. No schema in this document has been executed.
+- Session stores `lastActivityAt`; effective validity requires `now < expiresAt`, `now < lastActivityAt + idleTimeout` and `revokedAt IS NULL`. Proposed idle timeout is 24 hours, pending approval. Successful protected requests and refreshes update activity monotonically; unsuccessful requests do not. Absolute expiry never moves.
+- Repeated logout using the revoked Session JWT returns `401`. Client silently clears local auth state and treats logout as completed; no error notification.
+- **Database defense:** require composite FK `(parentTokenId, sessionId)` referencing unique `(id, sessionId)` in `RefreshToken`, alongside unique `parentTokenId`. If Prisma migration cannot express it, use reviewed SQL; inspect PostgreSQL metadata.
+- **Prisma Client relation join is NOT VERIFIED.** TC-AUTH-26 must create Session A/B, parent P in A, child C in A; include parent via Prisma Client and assert returned parent ID and Session A. TC-AUTH-27 must prove PostgreSQL rejects a child in B referencing P in A. No passing claim until executed on real DB.
