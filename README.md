@@ -1,75 +1,60 @@
-# Plant Care — Documentation Hub
+# Plant Care Backend API
 
-> **Purpose:** One navigation point for product, BA requirements, system design, API, testing and decisions. For **code currently implemented**, begin at the root [README](../README.md) and API overview. `Draft` and `Planned` do not imply deployed behavior.
+> **Project status:** Work in progress. This repository combines existing AI plant-analysis APIs with planned account, plant collection, and care-management features.
 
-## Start here
+## What problem does Plant Care solve?
+
+New plant owners may not know what plant they have, how to care for it, or how to track care over time. Plant Care aims to provide AI-assisted identification and diagnosis, followed by user-controlled plant records and care plans.
+
+## Current vs planned capabilities
+
+| Capability | Status | Evidence / next step |
+|---|---|---|
+| Plant identification | Implemented API | `POST /plants/identify`; see `docs/04-api/api-overview.md` |
+| Plant diagnosis | Implemented API | `POST /plants/diagnose`; see `docs/04-api/api-overview.md` |
+| Authentication | Designed, not implemented | Feature FSD and Prisma schema pending |
+| My Plants | Planned | Requires authentication and ownership checks |
+| Care plan approval and task tracking | Planned | Requirements under review |
+
+**Important:** AI `carePlan` text returned by Identify is not a persisted or approved schedule.
+
+## Architecture at a glance
 
 ```mermaid
 flowchart LR
-  V["Product: Why"] --> BA["Business Analysis: What"]
-  BA --> SD["System Design: How"]
-  SD --> API["API: Contracts"]
-  API --> TEST["Testing: Verify"]
-  D["Decision Records: Why this choice"] -.-> BA
-  D -.-> SD
+  Client --> Router[Express Router]
+  Router --> Upload[Multer]
+  Upload --> Controller
+  Controller --> UseCase
+  UseCase --> Image[Sharp normalization]
+  UseCase --> Provider[Gemini adapter]
+  Provider --> Validation[Zod response validation]
 ```
 
-## 01 — Product
+This diagram represents the existing image-analysis flow, not the planned authentication/database flow.
 
-- [Product Vision](01-product/product-vision.md) — users, problems, value, product capability status.
-- [BACCM Analysis](01-product/baccm-analysis.md) — Change, Need, Solution, Stakeholders, Value, Context.
-- [Stakeholder Analysis](01-product/stakeholders.md) — roles, involvement, RACI draft.
-- [Roadmap & MVP Scope](01-product/roadmap.md) — suggested feature delivery order.
+## API
 
-## 02 — Business Analysis
+See [Current API overview](docs/04-api/api-overview.md) for request fields, responses and errors. It distinguishes actual endpoints from future designs.
 
-- [Business Requirements](02-business-analysis/requirements/business-requirements.md) — business outcomes and traceability.
-- [Business Rules](02-business-analysis/requirements/business-rules.md) — decisions and task state machine.
-- [Non-functional Requirements](02-business-analysis/requirements/non-functional-requirements.md) — qualities, unknown thresholds, review gates.
-- [User Journey](02-business-analysis/processes/user-journey.md) — as-is hypothesis, to-be journey, rejection branch.
-- [Plant Identification](02-business-analysis/features/plant-identification.md) — existing draft feature/API acceptance requirements.
-- [Plant Diagnosis](02-business-analysis/features/plant-diagnosis.md) — existing Diagnose behavior and planned history.
-- [Care Planning & Tracking](02-business-analysis/features/care-planning.md) — approved product discovery decisions, planned feature, acceptance criteria.
+## Local development
 
-## 03 — System Design
+This README does not yet provide verified install/start/test commands. Before publishing setup instructions, check `package.json`, `.env.example`, `compose.yml` and run the commands in a clean environment. Do not guess CLI flags or promise that the database schema has been migrated.
 
-- [Architecture overview](03-system-design/architecture/system-overview.md)
-- [Component design](03-system-design/architecture/component-design.md)
-- [HTTP request flow](03-system-design/architecture/request-flow.md)
-- [Gemini integration](03-system-design/integrations/gemini-integration.md)
-- [Reliability index](03-system-design/reliability/README.md)
-- [Failure scenarios](03-system-design/reliability/failure-handling.md)
-- [Architecture baseline / historical checkpoint](03-system-design/architecture/architecture-baseline.md)
-- `database/` — database design **not yet authored**; do not infer implementation from folder existence.
+## Documentation
 
-## 04 — API
+Start at the [Documentation Hub](docs/README.md). Read feature documentation in this order: problem → requirements → design → risks → tests → evidence.
 
-- [Existing API overview and error mapping](04-api/api-overview.md) — source-based HTTP endpoints; planned Care APIs excluded.
+## Implementation integrity
 
-## 05 — Testing
+- `Implemented`: corresponding source code exists; tests and runtime evidence must be cited separately.
+- `Designed`: reviewed design, but no claim of running code.
+- `Planned`: not yet implemented.
+- `Draft`: pending review or decision.
 
-- [Identify use-case testing workflow](05-testing/test-scenarios.md)
-- [Diagnose use-case testing workflow](05-testing/diagnose-usecase-workflow.md)
-- [Existing test report](../tests/docs/plant-care-test-report.md)
+## Portfolio review
 
-## 06 — Decisions
-
-- [Architecture Decision Records](06-decisions/README.md)
-- [Product Decision Register PD-002–PD-012](06-decisions/product/README.md)
-
-## Reading paths
-
-| Audience | Suggested order |
-|---|---|
-| Product Owner / BA | Vision → BACCM → Requirements → User Journey → Feature specs → Product decisions |
-| Developer | Root README → Architecture → API → Feature specs → ADR → Testing |
-| QA / Reviewer | Feature acceptance criteria → Business Rules → API → Testing |
-| Portfolio reviewer | Root README → Vision → Architecture → Care Planning (planned) |
-
-## Documentation rules
-
-1. Keep a single canonical home for each concept; link instead of copy-pasting.
-2. Mark `Implemented` **only when source evidence exists**; distinguish planned and draft content.
-3. Keep future API designs out of current API contracts.
-4. Capture evolving work in GitHub Issues/PRs; preserve durable architecture and business knowledge here.
-5. For new large features, start with one feature spec file; split into subfolders only as needed.
+1. Read [Product Vision](docs/01-product/product-vision.md).
+2. Inspect [Current API](docs/04-api/api-overview.md) and source.
+3. Review [Architecture](docs/03-system-design/architecture/system-overview.md).
+4. Review [Decisions](docs/06-decisions/README.md) and [Testing](docs/05-testing/test-scenarios.md).
