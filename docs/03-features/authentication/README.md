@@ -1,45 +1,77 @@
-# Authentication — Feature Hub
+# Authentication
 
-**Status:** Designed / not implemented. **Last reviewed:** 2026-11-23. **Related outcome:** BR-02, personal plant collection and ownership.
+> **Feature status:** Designed — awaiting approval; not implemented.  
+> **Scope:** Register · Login · Refresh Token Rotation · Logout · Current User (`/auth/me`).  
+> **Business outcome:** Users can securely access their own saved plants across visits.
 
-## Start here
+## 1. Overview
 
-| Read in order | Question answered | Artifact |
-|---|---|---|
-| 1 | What must the feature do? | [FSD](fsd.md) |
-| 2 | How does a user/system interact? | [Use cases](use-cases.md) |
-| 3 | Why this architecture? | [Design](design.md) |
-| 4 | What can go wrong? | [Risk analysis](risks.md) |
-| 5 | How can we prove it? | [Test cases](test-cases.md) |
-| 6 | What did we learn from failures? | [Troubleshooting](troubleshooting.md) |
+Authentication establishes a user's identity and manages login sessions. A successful login creates a **Session** and its first **RefreshToken**. Refreshing consumes the current token and issues a successor **within the same Session**. Reusing a consumed token revokes the affected Session under the proposed strict policy. Protected operations derive the user identity from verified credentials; they must not trust a client-provided `ownerId`.
 
-## Feature in 30 seconds
+**New acceptance requirements:** idle timeout (proposed 24h, awaiting approval), repeated logout returns `401` and is handled silently by the client, and PostgreSQL composite FK protects token lineage. Prisma Client relation joins remain **unverified until integration tests pass**.
 
-A registered user logs in and receives a short-lived access credential and a refresh token. A login creates one Session. Each successful refresh consumes the old RefreshToken and inserts a new record in the same Session. Reuse of a consumed token triggers **strict** session revocation (a security policy with known false-positive risk). Logout revokes the Session. My Plants ownership must derive from authenticated identity, never client-provided `ownerId`.
+**Important:** This folder describes the intended behavior. It does not mean Authentication has been implemented or tested.
 
-```mermaid
-flowchart LR
-  U[User] --> L[Login]
-  L --> S[Session]
-  S --> T1[Refresh T1]
-  T1 -->|consume| T2[Refresh T2]
-  T2 -->|consume| T3[Refresh T3]
-  T1 -.->|reuse| R[Revoke Session]
-```
+## 2. Documentation reading path
 
-## Implementation truth
+**New to this feature? Read the documents in the following order.** Each step builds on the previous one; use the links to open the actual files.
 
-- Current `main` contains working Identify/Diagnose endpoints, but this proposed authentication feature is **not yet implemented**.
-- Current checked-in Prisma contract contains sample `User/Post`; it is not evidence that these models have been migrated.
-- The FSD is a draft; test cases below are **not executed**.
+| Step | Document | What you will understand | Read it before… |
+|:---:|---|---|---|
+| **01** | **[Functional Specification (FSD)](fsd.md)** | Scope, functional requirements, business/security rules, API behavior and decisions awaiting approval | Discussing how to build the feature |
+| **02** | **[Use Case Specifications](use-cases.md)** | How Register, Login, Refresh, Logout and ownership checks behave, including alternative flows | Designing the application logic |
+| **03** | **[Technical Design](design.md)** | Component responsibilities, data relationships, transaction boundaries and architectural trade-offs | Writing repositories and use cases |
+| **04** | **[Risk Register](risks.md)** | Security threats, failure modes, mitigation strategies and residual risks | Implementing security-sensitive behavior |
+| **05** | **[Test Cases](test-cases.md)** | What must be verified and what evidence counts as a passing test | Marking the feature complete |
 
-## What you must be able to explain
+### Deep dives and supporting references
 
-1. Why separate Session from RefreshToken?
-2. Why distinguish `consumedAt` and `revokedAt`?
-3. Why use `parentTokenId` rather than `parentHash`?
-4. Why is a database transaction insufficient by itself to prevent concurrent rotation?
-5. What legitimate behavior can strict reuse detection incorrectly classify as an attack?
-6. Which integration test would falsify the design?
+These documents are **not extra mandatory steps** in the main reading path. Open them when the corresponding question arises.
 
-**Before coding:** resolve client transport/CSRF, session/access-token invalidation semantics, TTL and retention, and PostgreSQL locking strategy. Record the final decisions in ADRs.
+| Document | When to read it |
+|---|---|
+| [Refresh Rotation Transaction](rotation-transaction.md) | When implementing or debugging locking, concurrent refresh, reuse detection and rollback |
+| [Authentication Data Model](../../04-architecture/database/authentication-data-model.md) | When designing the PostgreSQL schema, keys, relationships and invariants |
+| [Database Migration Runbook](../../04-architecture/database/migration-runbook.md) | Before generating, reviewing or applying a database migration |
+| [Troubleshooting](troubleshooting.md) | When reproducing a failure, investigating its cause or recording a confirmed fix |
+
+## 3. How the documents work together
+
+| Question | Source of truth |
+|---|---|
+| **What must the system do?** | [FSD](fsd.md) |
+| **What happens in each user/system flow?** | [Use Cases](use-cases.md) |
+| **How should the system be structured?** | [Technical Design](design.md) and [Data Model](../../04-architecture/database/authentication-data-model.md) |
+| **What can fail, and how do we reduce the risk?** | [Risk Register](risks.md) |
+| **How do we prove the behavior works?** | [Test Cases](test-cases.md) |
+| **How do we investigate a failure?** | [Troubleshooting](troubleshooting.md) |
+
+**Documentation rule:** Change the relevant source document when a requirement or design decision changes. Update linked tests and dependent sections in the same change. Do not create separate comparison documents to describe discrepancies between code and docs; implementation must follow the approved docs.
+
+## 4. Implementation sequence
+
+After the FSD and design decisions are approved, implement the feature in this order:
+
+1. **Persistence:** Validate the Prisma Contract and review the PostgreSQL migration against the [Data Model](../../04-architecture/database/authentication-data-model.md) and [Migration Runbook](../../04-architecture/database/migration-runbook.md).
+2. **Application:** Implement repositories and use cases for Register and Login; then Refresh and Logout.
+3. **HTTP:** Add request validation, controllers, routes, error mapping and authenticated user context.
+4. **Verification:** Execute unit, API and real-PostgreSQL integration tests, including concurrent refresh and rollback scenarios in [Test Cases](test-cases.md).
+5. **Integration:** Enforce verified user ownership when My Plants is implemented.
+
+**Do not apply migrations to a database containing valuable data without reviewing the generated operations and confirming the rollback/backup plan.**
+
+## 5. Approval and completion criteria
+
+**Before coding:** Review and approve the security/transport/lifetime decisions in [FSD — Section 8](fsd.md). In particular, confirm token transport, access-token and Session lifetimes, logout enforcement, and strict reuse behavior. Until approved, these are proposals rather than final product decisions.
+
+**Definition of Done:**
+
+- [ ] FSD and relevant technical decisions approved.
+- [ ] Prisma Contract validation and migration review completed.
+- [ ] Register, Login, Refresh, Logout and Me implemented to the documented API contract.
+- [ ] Token lineage, transaction rollback and concurrent-refresh invariants verified against PostgreSQL.
+- [ ] Protected requests reject revoked sessions; ownership checks prevent cross-user access.
+- [ ] No plaintext password or refresh token persisted or logged.
+- [ ] Test results and remaining risks recorded; documentation updated to reflect verified implementation.
+
+**Next document:** [01 — Functional Specification (FSD)](fsd.md).

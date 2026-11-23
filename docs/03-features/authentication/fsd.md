@@ -1,8 +1,8 @@
 # Plant Care — Authentication Functional Specification (FSD v1)
 
-**Status:** Proposed specification — awaiting owner approval; not implemented or UAT-approved.  
+**Status:** Proposed MVP specification — owner approval required before coding; not implemented.  
 **Scope:** Identity & session lifecycle, including refresh-token rotation and reuse detection.  
-**Source of truth after approval:** This FSD, together with `design.md`, `use-cases.md`, and `test-cases.md`. Implementation is required to conform; older paths are not normative.  
+**Normative after approval:** This FSD defines behavior; `design.md` defines architecture; `use-cases.md` details flows; `test-cases.md` defines verification. Change these existing files when a decision changes.  
 **Traceability:** Business goal BR-02 (personal plant collection) requires authenticated ownership.
 
 ## 1. Business context and objective
@@ -26,7 +26,7 @@ A user needs to return to their saved plants across visits without exposing anot
 - **Authenticated user:** reads own profile, refreshes credentials, logs out, manages own plants.
 - **Authentication API:** validates requests and enforces policies.
 - **PostgreSQL:** stores user, session, and refresh-token records.
-- **Client:** stores and sends credentials according to a policy still to be selected.
+- **Client:** sends bearer access JWT and opaque refresh token as specified in section 8.
 
 ## 3. Functional requirements
 
@@ -61,10 +61,10 @@ A user needs to return to their saved plants across visits without exposing anot
 ## 5. Use cases
 
 ### UC-AUTH-01 — Register
-**Precondition:** Email is not already registered.  
+**Precondition:** A valid email and password are supplied; uniqueness is enforced during persistence.  
 **Main flow:** Visitor submits valid email/password → system normalizes and validates input → securely hashes password → persists User → returns registration success.  
 **Alternatives:** Duplicate email or invalid input → reject without creating a User.  
-**Postcondition:** User exists; automatic login after registration remains an open product decision.
+**Postcondition:** User exists; registration does not automatically log in.
 
 ### UC-AUTH-02 — Login
 **Precondition:** Registered User exists.  
@@ -83,7 +83,7 @@ A user needs to return to their saved plants across visits without exposing anot
 ### UC-AUTH-04 — Logout
 **Precondition:** Current Session can be identified securely.  
 **Main flow:** User requests logout → system revokes Session → subsequent refresh attempts on that Session fail.  
-**Postcondition:** Session invalid for refresh; whether already-issued access tokens are rejected immediately is an open decision.
+**Postcondition:** Session invalid for refresh; protected requests reject the revoked Session on subsequent validation (section 8.2).
 
 ## 6. UML — Rotation and reuse
 
@@ -176,6 +176,8 @@ These are **specific proposed choices**, not implemented facts. Once approved, t
 ### 8.2 Lifetimes and revocation
 
 - Access JWT TTL: **15 minutes**. Refresh token TTL: **7 days per issued token**. Session absolute TTL: **30 days from login**, not extended by rotation.
+- **Idle timeout:** a Session expires after an inactivity interval, independently of its absolute expiry. Proposed MVP default: **24 hours** (requires owner approval). Store `lastActivityAt` and define `idleExpiresAt = lastActivityAt + idleTimeout`; a Session is active only when `now < expiresAt` **and** `now < idleExpiresAt` and `revokedAt IS NULL`.
+- **Activity definition:** a successful authenticated protected API request or successful refresh counts as activity. Update `lastActivityAt` atomically/monotonically (never move backwards); do not extend `expiresAt`. Rejected requests, invalid tokens and background cleanup do not count. At the expiry boundary (`now >= idleExpiresAt`), deny access and refresh with `401`. Use a trusted server/DB clock and test boundary and concurrent updates. This per-request write is an MVP trade-off; optimize only after correctness tests.
 - Protected API endpoints verify JWT signature/claims and the referenced Session's active status. Thus logout/reuse revocation takes effect on subsequent protected requests (subject to in-flight requests). This costs a database read; no cache in the MVP.
 - Refresh uses the earlier of its own expiry and Session expiry. Strict reuse of a consumed token revokes only the affected Session.
 - Retain consumed/revoked token rows while their Session is retained. A retention/deletion job is **not part of the MVP**; do not claim production-grade retention compliance until a policy and job exist.
@@ -185,6 +187,7 @@ These are **specific proposed choices**, not implemented facts. Once approved, t
 - Normalize email with `trim().toLowerCase()`; enforce uniqueness on the normalized value. Password minimum 12 characters; reject excessively long input (e.g. over 128 characters). Hash with Argon2id using a maintained library and documented parameters.
 - Registration does **not** automatically log in. Login creates a new Session and first RefreshToken in one transaction.
 - Logout requires a valid access JWT and revokes its `sid` Session; repeated logout using the same now-revoked JWT returns `401` under Session validation. Logout does not revoke other Sessions.
+- **Client contract:** `401` on a repeated logout with a revoked/expired Session is **expected behavior, not a server bug**. Client clears local access token, refresh token, user state and session state; treats logout as complete and **does not display an error notification**. Do not treat arbitrary `401` from other endpoints as a successful logout without checking the request context.
 - Identify/Diagnose endpoints remain public in this phase; My Plants endpoints require authentication.
 
 ### 8.4 Endpoint contract
@@ -197,12 +200,13 @@ These are **specific proposed choices**, not implemented facts. Once approved, t
 | POST | `/auth/logout` | Bearer access token | `204`, no body |
 | GET | `/auth/me` | Bearer access token | `200` with `{ "id": "...", "email": "..." }` |
 
-Errors use `{ "error": { "code": "MACHINE_READABLE", "message": "Safe message" } }`. `400` for malformed inputs, `401` for invalid credentials/tokens/session, `409` for duplicate email, `429` for rate limiting, `500` for unexpected errors. Do not expose whether an email exists in the **login** response. Register duplicate `409` is an explicit product trade-off.
+Errors use `{ "error": { "code": "MACHINE_READABLE", "message": "Safe message" } }`. `400` for malformed inputs, `401` for invalid credentials/tokens/session, `409` for duplicate email, `429` for rate limiting when the limiter is implemented, `500` for unexpected errors. A production release must not claim brute-force protection without rate-limit tests. Do not expose whether an email exists in the **login** response. Register duplicate `409` is an explicit product trade-off.
 
 ### 8.5 Concurrency and database invariants
 
 - All Session lifecycle operations (rotation, reuse revocation, logout) serialize on the same Session row in PostgreSQL, then re-read state under lock. A plain transaction without locking is insufficient.
-- A conditional consume operation and unique `parentTokenId` guarantee at most one successor. A child must belong to the same Session as its parent; prefer a composite FK if supported by generated migration, otherwise enforce within the serialized repository operation and test the invariant.
+- A conditional consume operation and unique `parentTokenId` guarantee at most one successor. **Composite FK is the required database defense** for same-Session lineage: `(parentTokenId, sessionId)` references a unique `(id, sessionId)` on `RefreshToken`, while `parentTokenId` remains unique. Inspect generated SQL and verify actual PostgreSQL constraints. If the Prisma 8 RC migration cannot express this, use reviewed migration SQL rather than silently weakening the invariant.
+- **Prisma Client join behavior with a composite FK is NOT VERIFIED.** Before trusting the relation include/join result, run an integration test using real PostgreSQL: create Session A and B; create parent P in A; create valid child C in A; fetch C with its parent via Prisma Client; assert `C.sessionId === A.id`, `C.parentTokenId === P.id`, `C.parent.id === P.id`, and `C.parent.sessionId === A.id`. Fail immediately on mismatch. Also attempt a child in B pointing to P in A and assert PostgreSQL rejects it. Do not mark this verified until the test actually passes.
 - Raw refresh token is never persisted. Only a keyed cryptographic verifier is persisted; keep its secret separate from JWT signing secret.
 - **Implementation gate:** Prisma 8 RC contract emit, generated migration inspection, isolated DB application and PostgreSQL concurrency tests must pass before declaring implementation complete.
 
@@ -218,6 +222,9 @@ Errors use `{ "error": { "code": "MACHINE_READABLE", "message": "Safe message" }
 | TC-AUTH-06 | Reuse T1 after rotation | 401; affected Session revoked |
 | TC-AUTH-07 | Expired/revoked token or Session | 401; no successor |
 | TC-AUTH-08 | Logout then refresh | Refresh denied |
+| TC-AUTH-23 | Repeat logout using revoked access JWT | 401; client silently clears local auth state |
+| TC-AUTH-25 | Session idle timeout boundary | 401 for protected API and refresh at/after idle expiry |
+| TC-AUTH-26 | Prisma composite FK parent include | Correct parent returned from Session A; cross-session FK insert rejected |
 | TC-AUTH-09 | Two simultaneous refreshes of T1 | At most one success; strict policy may revoke Session |
 | TC-AUTH-10 | Fail insert T2 after consuming T1 | Transaction rollback; no partial rotation |
 | TC-AUTH-11 | Inspect persisted records and logs | No raw password/refresh token |
@@ -237,7 +244,7 @@ Errors use `{ "error": { "code": "MACHINE_READABLE", "message": "Safe message" }
 
 ## 11. Approval gate
 
-The policies in section 8 are proposed defaults. The owner must approve or edit them before implementation. In particular, confirm: (1) mobile-style JSON token transport vs browser cookies; (2) immediate Session check for every protected request; (3) 15-minute / 7-day / 30-day lifetimes; (4) strict reuse revocation. After approval, there should be no unresolved `TBD` affecting MVP behavior.
+The policies in section 8 are proposed defaults, including the proposed 24-hour idle timeout. The owner must approve or edit them before implementation. In particular, confirm: (1) mobile-style JSON token transport vs browser cookies; (2) immediate Session check for every protected request; (3) 15-minute / 7-day / 30-day lifetimes; (4) strict reuse revocation. After approval, there should be no unresolved `TBD` affecting MVP behavior.
 
 ## 12. Implementation and migration checklist
 

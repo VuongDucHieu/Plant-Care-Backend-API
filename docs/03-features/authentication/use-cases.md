@@ -1,57 +1,29 @@
-# Authentication — Use Case Specifications
+# Authentication — Use Cases
 
-**Status:** Draft; behavior proposed, not implemented. Related: [FSD](fsd.md).
+**Status:** Proposed. Canonical security and API policies: [FSD §8](fsd.md).
 
-## UC-AUTH-01 — Register
+## UC-AUTH-01 Register
 
-**Actor:** Visitor. **Goal:** Create an account for future personal plant ownership.
+**Actor:** Visitor. **Precondition:** Valid email/password supplied. **Main:** validate and normalize email (`trim().toLowerCase()`), enforce password length 12–128, hash with Argon2id, insert User, return 201 with id/email. **Alternatives:** malformed input 400; duplicate normalized email 409; DB error no partial User. **Postcondition:** User created; no Session created.
 
-**Preconditions:** Service is available; email/password supplied.
+## UC-AUTH-02 Login
 
-**Main flow:** (1) Visitor submits credentials. (2) System validates input and normalizes email under the agreed policy. (3) System hashes password using a password-specific algorithm. (4) Database creates User under unique-email constraint. (5) System returns success without exposing password hash.
+**Actor:** Registered user. **Main:** validate input; look up normalized email; verify password without leaking account existence; transactionally create Session and initial RefreshToken; issue JWT and opaque refresh secret; return 200 credential envelope. **Alternatives:** invalid credentials 401; DB error rolls back both rows. **Postcondition:** one new active Session and initial token; multiple independent logins may create separate Sessions.
 
-**Alternatives:** Invalid input → validation failure. Existing email → controlled duplicate error; concurrent registrations must not create two users. Database failure → no partial user.
+## UC-AUTH-03 Refresh
 
-**Postcondition:** Exactly one account for the normalized email. Whether registration also logs in is unresolved.
+**Actor:** Client possessing refresh secret. **Preconditions:** Session active (neither revoked nor past absolute/idle expiry); token authentic, unexpired, unconsumed, unrevoked. **Main:** derive token verifier; lock Session in transaction; re-read state; conditionally consume T1; insert T2 with same Session and parent=T1; commit; return 200 new credentials. **Alternatives:** consumed T1 revokes affected Session and returns 401 **after commit**; expired/explicitly revoked token or Session returns 401 without successor; child insertion error rolls back. **Postcondition:** at most one child per parent; no partial rotation.
 
-## UC-AUTH-02 — Login
+## UC-AUTH-04 Logout
 
-**Actor:** Registered user. **Goal:** Establish an authenticated session.
+**Actor:** Authenticated user. **Precondition:** valid JWT and active Session. **Main:** lock Session; revoke with `LOGOUT`; commit; return 204 without body. **Alternatives:** invalid/expired JWT or revoked Session 401. **Repeated logout:** Same access JWT against the revoked Session returns HTTP `401` as expected. Client silently clears local authentication state and considers logout completed; no user-facing error.
 
-**Main flow:** (1) Submit email/password. (2) Verify password against stored hash. (3) Create Session and initial RefreshToken atomically. (4) Issue access credential and refresh credential via selected transport.
+**Postcondition:** Future refresh is denied.
 
-**Alternatives:** Wrong email/password → generic failure and no Session. Storage failure → rollback. Rate limiting may reject abusive attempts.
+## UC-AUTH-05 Get current user
 
-**Postcondition:** One new Session and one active initial RefreshToken. Two independent logins may create two sessions.
+**Actor:** Authenticated user. **Main:** verify JWT signature, issuer, audience, expiry and active `sid` Session; read User by `sub`; return id/email. **Alternatives:** invalid JWT, missing/revoked/expired Session, missing User → 401. **Postcondition:** no password hash exposed.
 
-## UC-AUTH-03 — Refresh with rotation
+## UC-AUTH-06 My Plants ownership boundary (dependent feature)
 
-**Actor:** Authenticated client holding refresh credential. **Goal:** Renew access without reentering password.
-
-**Preconditions:** Session active; token authentic, unexpired, unconsumed, unrevoked.
-
-**Main flow:** (1) Submit T1. (2) Resolve token hash and associated Session. (3) Serialize operations on the Session in a database transaction. (4) Check Session and T1. (5) Conditionally mark T1 consumed. (6) Insert T2 with `parentTokenId=T1.id`, same `sessionId`. (7) Commit. (8) Return new credentials.
-
-**Alternatives:** Consumed T1 → reject and revoke affected Session under strict policy; expired/otherwise revoked T1 → reject without automatically claiming reuse; inactive Session → reject. Concurrent requests → at most one successful consume, but strict reuse may revoke the Session afterward. Insert failure → rollback consume.
-
-**Postcondition:** T1 has one successor at most; no partial rotation; no active token on a revoked Session.
-
-## UC-AUTH-04 — Logout
-
-**Actor:** Authenticated user. **Goal:** End current Session.
-
-**Main flow:** (1) Identify Session from authenticated credential. (2) Revoke Session. (3) Clear client credential according to selected transport. (4) Return success.
-
-**Alternatives:** Already revoked → idempotent handling policy to be defined. Expired access credential → logout API policy to be defined.
-
-**Postcondition:** Future refresh is denied. Already-issued access tokens may remain usable until expiry unless session status is checked on protected requests; this must be decided explicitly.
-
-## UC-AUTH-05 — Access own plants
-
-**Actor:** Authenticated user. **Goal:** Read/write only plants belonging to self.
-
-**Main flow:** (1) Validate access credential. (2) Derive `userId` from verified authentication context. (3) Query/mutate Plant using `ownerId=userId`. (4) Return only authorized data.
-
-**Alternative:** Plant owned by another user → no data disclosure; choose 404/403 consistently in API contract.
-
-**Postcondition:** No cross-account access. This use case depends on My Plants implementation.
+**Actor:** Authenticated user. **Main:** verify JWT and Session; derive `userId` from `sub`; query/mutate Plant scoped to `ownerId=userId`. **Alternative:** another user's plant → no data disclosed (404 recommended; final My Plants API contract owns the choice). **Postcondition:** no cross-account read/write. My Plants feature itself remains out of scope for this implementation slice.

@@ -1,59 +1,66 @@
-# Authentication — Test Cases and Evidence Plan
+# Authentication — Test Cases
 
-**Status:** Designed, **not executed**. Related: [FSD](fsd.md), [Risks](risks.md).
+**Status:** Acceptance plan; tests not executed. Requirement IDs refer to [FSD](fsd.md). A test is PASS only after code, environment and evidence are recorded.
 
-## Evidence convention
+| ID | Level | Scenario | Expected |
+|---|---|---|---|
+| TC-AUTH-01 | HTTP+DB | Register new normalized email | 201, one User, no Session; no plaintext password |
+| TC-AUTH-02 | HTTP+DB | Duplicate email (including concurrent attempts) | 409; unique DB constraint; one User |
+| TC-AUTH-03 | HTTP+DB | Invalid login | 401 generic response; no Session created |
+| TC-AUTH-04 | HTTP+DB | Valid login | 200; one Session and initial RefreshToken, no raw token stored |
+| TC-AUTH-05 | HTTP+DB | Refresh T1 once | T1 consumed, T2 inserted with parent T1, same Session |
+| TC-AUTH-06 | HTTP+DB | Reuse consumed T1 | 401; Session revoked with REUSE_DETECTED; revocation **committed** |
+| TC-AUTH-07 | HTTP+DB | Expired/explicitly revoked token or expired/revoked Session | 401, no successor, no false reuse classification |
+| TC-AUTH-08 | HTTP+DB | Logout and refresh | 204 logout; refresh 401; other Session unaffected |
+| TC-AUTH-09 | PostgreSQL race | Two refreshes of T1 synchronized at critical section | At most one child; strict reuse may revoke Session |
+| TC-AUTH-10 | PostgreSQL fault | Child insert fails after consume attempt | Full rollback, parent still unconsumed |
+| TC-AUTH-11 | Security | Inspect DB and logs | No raw password/refresh token or JWT in logs |
+| TC-AUTH-12 | HTTP+DB | User A attempts to access User B plant | No cross-user access; execute when My Plants exists |
+| TC-AUTH-13 | HTTP+DB | Response lost after T1 commit, client retries T1 | 401 and affected Session revoked; documented UX cost |
+| TC-AUTH-14 | PostgreSQL race | Refresh and logout overlap | Serialized; subsequent protected request rejects revoked Session |
+| TC-AUTH-15 | DB | Cross-session parent link and duplicate child | Rejected by approved invariant enforcement |
+| TC-AUTH-16 | HTTP+DB | Access JWT after logout | 401 on subsequent protected request |
+| TC-AUTH-17 | HTTP | Refresh in JSON body; no cookies set | Matches MVP transport; cookie-CSRF test deferred to browser-cookie feature |
+| TC-AUTH-18 | Security | Repeated invalid login attempts | No account enumeration; rate limiter required before public production release |
+| TC-AUTH-19 | DB | Expiry boundaries: 15m access, 7d refresh, 30d Session | Tokens and Sessions rejected at/after expiry |
+| TC-AUTH-20 | CLI+DB | Emit contract, inspect and apply migration to disposable DB | Expected four models, unique/FK constraints; no sample Post table |
+| TC-AUTH-21 | HTTP | Register password length 11,12,128,129 | 11/129 rejected, 12/128 accepted if otherwise valid |
+| TC-AUTH-22 | HTTP | GET /auth/me with valid/invalid JWT | 200 id/email or 401; no password hash |
+| TC-AUTH-23 | HTTP+client | Repeat logout with same revoked JWT | API returns 401; client clears access/refresh/user/session state, reports logout completed and shows no error toast |
+| TC-AUTH-24 | HTTP | Malformed requests and duplicate email | 400 / 409 and consistent `{error:{code,message}}` envelope |
+| TC-AUTH-25 | HTTP+DB | Idle boundary: successful activity, then advance clock to just before/at/after `lastActivityAt + idleTimeout`; absolute expiry remains fixed | Activity extends idle window but not absolute TTL; at/after idle expiry `/auth/me` and refresh return 401; failed requests do not extend idle |
+| TC-AUTH-26 | Prisma Client + real PostgreSQL | Create Session A and B; parent P in A; valid child C in A; fetch C including `parent` via Prisma Client | `child.sessionId=A.id`, `child.parentTokenId=P.id`, `child.parent.id=P.id`, `child.parent.sessionId=A.id`; fail immediately on any mismatch; verify FK in DB |
+| TC-AUTH-27 | PostgreSQL constraint | Attempt child in Session B with parent P from Session A | PostgreSQL rejects insert due to composite FK; transaction rolls back |
 
-For each executed case record: test ID, code/commit SHA, environment (PostgreSQL + Prisma versions), command, actual result, relevant sanitized DB state, pass/fail, issue reference. A test plan is **not** evidence of passing tests.
+## Concurrency test method
 
-| ID | Level | Setup / action | Expected result | Requirement / risk |
-|---|---|---|---|---|
-| TC-01 | API+DB | Register new normalized email | One User; password hash only | FR-01 |
-| TC-02 | API+DB | Register same email twice, including concurrent requests | Unique constraint enforced; one User | FR-01 |
-| TC-03 | API+DB | Login with wrong password | Generic failure; no Session | FR-02 |
-| TC-04 | API+DB | Login with valid credentials | One Session and one initial RefreshToken | FR-03 |
-| TC-05 | DB+API | Refresh T1 once | T1 consumed, T2 created, same Session | FR-04 |
-| TC-06 | DB | Rotate T1→T2→T3 | T2.parent=T1; T3.parent=T2; no fork | FR-05 |
-| TC-07 | API+DB | Present consumed T1 again | Reject; revoke affected Session | FR-06 |
-| TC-08 | API+DB | Present expired or otherwise revoked token | Reject; no successor; no false reuse classification | FR-07 |
-| TC-09 | PostgreSQL concurrency | Send two simultaneous refresh requests for T1 | At most one successful consume/insert; strict reuse may revoke Session | FR-09, R-01/02 |
-| TC-10 | PostgreSQL fault injection | Fail T2 insertion after consume update | Full rollback; T1 remains unconsumed | FR-10 |
-| TC-11 | Security inspection | Inspect persisted records and sanitized logs | No raw refresh token/password | FR-11, R-04 |
-| TC-12 | API+DB | User A requests User B's Plant | No cross-user data or mutation | FR-12 |
-| TC-13 | API+DB | Commit rotation, simulate lost HTTP response, retry T1 | Strict policy behavior documented and verified | R-02 |
-| TC-14 | PostgreSQL concurrency | Refresh races with logout/reuse revocation | No refresh issued that remains valid after revocation | R-03 |
-| TC-15 | DB invariant | Attempt child referencing parent in another Session | Rejected by DB constraint or validated atomic repository operation | R-05 |
-| TC-16 | API | Access old access JWT after logout | Matches explicit revocation policy; currently TBD | R-06 |
-| TC-17 | Security API | Cross-site cookie refresh/logout request | Rejected according to chosen CSRF policy; currently TBD | R-07 |
-| TC-18 | Security API | Many invalid logins / enumerate email | Rate limiting and generic response; thresholds TBD | R-08 |
-| TC-19 | DB/job | Retention purge of historical tokens | Meets retention policy and preserves required audit evidence; TBD | R-09 |
-| TC-20 | CLI+DB | Emit contract, inspect migration operations, apply to test DB | No sample Post table; expected schema and constraints | R-10 |
+Use two independent PostgreSQL connections and a controlled barrier around lock acquisition, not only `Promise.allSettled`. Assert DB final state (child count, consumedAt, Session.revokedAt), not fixed response arrival order. Repeat with transaction instrumentation. Tests against fakes cannot prove database locking behavior.
 
-## Deep-dive: concurrency test TC-09
-
-**Given:** one active Session and T1 with `consumedAt = null`. **When:** two independent requests submit T1 at approximately the same time, using a synchronization barrier rather than relying only on timing. **Then:** the database contains at most one child with `parentTokenId=T1.id`; T1 was consumed once; the Session's final state matches strict reuse policy; no raw token is logged. Repeat the test across multiple runs to increase the chance of exposing a race. A single passing run does not prove race freedom.
-
-## Deep-dive: rollback test TC-10
-
-**Given:** valid T1. **When:** a controlled DB constraint/fault causes successor insertion to fail after the consume attempt within one transaction. **Then:** T1's `consumedAt` is still NULL, no T2 exists, and API returns an error without exposing a new token. The failure injection must be reproducible.
-
-## Test organization suggestion
-
-- Unit: domain status rules and use-case branching with fakes.
-- Integration: PostgreSQL transaction, locks, constraints, foreign keys, rotation lineage.
-- HTTP integration: validation, status codes, auth context, cookies/headers.
-- UAT: user-visible register, login, logout, return to saved plants. Do not substitute UAT for race/security tests.
-
-## Minimal execution record template
+## Test evidence record
 
 ```text
 Test ID:
-Commit:
-Environment:
+Commit SHA:
+Prisma/PostgreSQL versions:
 Command:
-Expected:
-Actual:
-Evidence (redacted):
-Result: PASS / FAIL / BLOCKED
-Follow-up issue:
+Expected / Actual:
+Sanitized DB evidence:
+PASS / FAIL / BLOCKED:
+Issue or follow-up:
 ```
+
+**Out-of-scope gates:** My Plants ownership test remains blocked until My Plants exists. Cookie CSRF is not applicable to this JSON-token MVP, but must be added if cookie transport is introduced. Rate limiting is a production-release gate; thresholds and middleware must be decided and tested before internet exposure. Retention cleanup is not implemented in MVP; document residual risk rather than claiming a passed retention test.
+
+## TC-AUTH-26 — Prisma Client composite-FK relation verification
+
+**Precondition:** Composite FK exists in PostgreSQL; Prisma Client exposes the parent relation. **Status: NOT EXECUTED; relation name and client API must be adapted to generated Prisma 8 RC client.**
+
+1. In isolated test database create two distinct Sessions, `A` and `B` (with required User records).
+2. Insert parent RefreshToken `P` with `sessionId=A.id` and `parentTokenId=null`.
+3. Insert child RefreshToken `C` with `sessionId=A.id` and `parentTokenId=P.id`.
+4. Fetch `C` using Prisma Client relation include/select for `parent` (not a separate manually constructed lookup).
+5. **Fail immediately** unless the returned `child.id===C.id`, `child.sessionId===A.id`, `child.parentTokenId===P.id`, `child.parent?.id===P.id` and `child.parent?.sessionId===A.id`.
+6. Separately attempt a token in `B` with `parentTokenId=P.id`; assert a PostgreSQL FK violation, not merely an application validation error.
+7. Cleanup in a transaction or disposable schema. Record Prisma version, generated client relation API, SQL constraint name and actual result.
+
+**Important:** A successful insert and FK metadata check do not prove Prisma Client's relation join is correct; both checks are required. Do not mark PASS until executed.
