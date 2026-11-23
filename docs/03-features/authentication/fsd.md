@@ -1,8 +1,8 @@
 # Plant Care — Authentication Functional Specification (FSD v1)
 
-**Status:** Draft for technical review; not implemented or UAT-approved.  
+**Status:** Proposed specification — awaiting owner approval; not implemented or UAT-approved.  
 **Scope:** Identity & session lifecycle, including refresh-token rotation and reuse detection.  
-**Source baseline:** Existing `docs/03-system-design/security/authentication-design.md` and `docs/03-system-design/database/prisma-schema-design.md` on GitHub, plus decisions agreed in this conversation.  
+**Source of truth after approval:** This FSD, together with `design.md`, `use-cases.md`, and `test-cases.md`. Implementation is required to conform; older paths are not normative.  
 **Traceability:** Business goal BR-02 (personal plant collection) requires authenticated ownership.
 
 ## 1. Business context and objective
@@ -124,10 +124,34 @@ erDiagram
     User ||--o{ Plant : owns
     Session ||--o{ RefreshToken : contains
     RefreshToken o|--o| RefreshToken : predecessor_of
-    User { string id PK; string email UK; string passwordHash }
-    Session { string id PK; string userId FK; datetime expiresAt; datetime revokedAt; string revokedReason }
-    RefreshToken { string id PK; string sessionId FK; string parentTokenId FK; string tokenHash UK; datetime expiresAt; datetime consumedAt; datetime revokedAt; string revokedReason }
-    Plant { string id PK; string ownerId FK; string displayName; json identificationSnapshot }
+    User {
+        string id PK
+        string email UK
+        string passwordHash
+    }
+    Session {
+        string id PK
+        string userId FK
+        datetime expiresAt
+        datetime revokedAt
+        string revokedReason
+    }
+    RefreshToken {
+        string id PK
+        string sessionId FK
+        string parentTokenId FK
+        string tokenHash UK
+        datetime expiresAt
+        datetime consumedAt
+        datetime revokedAt
+        string revokedReason
+    }
+    Plant {
+        string id PK
+        string ownerId FK
+        string displayName
+        json identificationSnapshot
+    }
 ```
 
 ### Constraints and data semantics
@@ -138,17 +162,49 @@ erDiagram
 - `createdAt` for audit. `updatedAt` on RefreshToken is not required unless a specific requirement emerges.
 - Historical tokens require a retention and purge policy; snapshots are not database backups.
 
-## 8. API contracts (provisional)
+## 8. MVP API and security policy (proposed for approval)
 
-| Method | Endpoint | Success | Notes |
+These are **specific proposed choices**, not implemented facts. Once approved, they become the acceptance baseline. Changing one requires updating this FSD and affected tests, not creating a comparison document.
+
+### 8.1 Client and credential transport
+
+- MVP target: HTTP API consumed by a trusted test client or mobile-style client. Access token is a JWT in `Authorization: Bearer <token>`; refresh token is an opaque random credential sent in the JSON request body.
+- No refresh cookie in this MVP. Consequently cookie-specific CSRF handling is not part of this MVP; **never interpret this as CSRF protection for a future cookie-based browser client**.
+- The client must store refresh tokens in an appropriate secure credential store. Avoid localStorage for a browser production client. The API must never log credentials.
+- Access JWT includes `sub` (user ID), `sid` (Session ID), `iat`, `exp`; signature, issuer and audience are verified. Signing secret is separate from refresh verifier key.
+
+### 8.2 Lifetimes and revocation
+
+- Access JWT TTL: **15 minutes**. Refresh token TTL: **7 days per issued token**. Session absolute TTL: **30 days from login**, not extended by rotation.
+- Protected API endpoints verify JWT signature/claims and the referenced Session's active status. Thus logout/reuse revocation takes effect on subsequent protected requests (subject to in-flight requests). This costs a database read; no cache in the MVP.
+- Refresh uses the earlier of its own expiry and Session expiry. Strict reuse of a consumed token revokes only the affected Session.
+- Retain consumed/revoked token rows while their Session is retained. A retention/deletion job is **not part of the MVP**; do not claim production-grade retention compliance until a policy and job exist.
+
+### 8.3 Registration, login and logout behavior
+
+- Normalize email with `trim().toLowerCase()`; enforce uniqueness on the normalized value. Password minimum 12 characters; reject excessively long input (e.g. over 128 characters). Hash with Argon2id using a maintained library and documented parameters.
+- Registration does **not** automatically log in. Login creates a new Session and first RefreshToken in one transaction.
+- Logout requires a valid access JWT and revokes its `sid` Session; repeated logout using the same now-revoked JWT returns `401` under Session validation. Logout does not revoke other Sessions.
+- Identify/Diagnose endpoints remain public in this phase; My Plants endpoints require authentication.
+
+### 8.4 Endpoint contract
+
+| Method | Endpoint | Request | Success |
 |---|---|---|---|
-| POST | `/auth/register` | 201 | Request/response schema TBD |
-| POST | `/auth/login` | 200 | Creates Session + initial token |
-| POST | `/auth/refresh` | 200 | Rotates token, strict reuse detection |
-| POST | `/auth/logout` | 204 | Revokes current Session |
-| GET | `/auth/me` | 200 | Requires valid access credential |
+| POST | `/auth/register` | `{ "email": "...", "password": "..." }` | `201` with `{ "id": "...", "email": "..." }` |
+| POST | `/auth/login` | `{ "email": "...", "password": "..." }` | `200` with `{ "accessToken": "...", "refreshToken": "...", "tokenType": "Bearer", "expiresIn": 900 }` |
+| POST | `/auth/refresh` | `{ "refreshToken": "..." }` | `200` with same credential envelope as login |
+| POST | `/auth/logout` | Bearer access token | `204`, no body |
+| GET | `/auth/me` | Bearer access token | `200` with `{ "id": "...", "email": "..." }` |
 
-401/400/409/429 and error envelope need a separate API-contract decision; do not assume endpoints already exist.
+Errors use `{ "error": { "code": "MACHINE_READABLE", "message": "Safe message" } }`. `400` for malformed inputs, `401` for invalid credentials/tokens/session, `409` for duplicate email, `429` for rate limiting, `500` for unexpected errors. Do not expose whether an email exists in the **login** response. Register duplicate `409` is an explicit product trade-off.
+
+### 8.5 Concurrency and database invariants
+
+- All Session lifecycle operations (rotation, reuse revocation, logout) serialize on the same Session row in PostgreSQL, then re-read state under lock. A plain transaction without locking is insufficient.
+- A conditional consume operation and unique `parentTokenId` guarantee at most one successor. A child must belong to the same Session as its parent; prefer a composite FK if supported by generated migration, otherwise enforce within the serialized repository operation and test the invariant.
+- Raw refresh token is never persisted. Only a keyed cryptographic verifier is persisted; keep its secret separate from JWT signing secret.
+- **Implementation gate:** Prisma 8 RC contract emit, generated migration inspection, isolated DB application and PostgreSQL concurrency tests must pass before declaring implementation complete.
 
 ## 9. Test cases (draft)
 
@@ -179,22 +235,15 @@ erDiagram
 
 **UAT status:** Not executed. No stakeholder sign-off.
 
-## 11. Open decisions (must resolve before production)
+## 11. Approval gate
 
-1. **Client platform and transport:** web cookie (`HttpOnly`, `Secure`, `SameSite`) versus mobile secure storage; CSRF protection for cookie-based refresh.
-2. **Access token revocation:** validate Session on each request versus short access-token TTL after logout/reuse.
-3. **Token lifetime and retention:** absolute/idle Session TTL, refresh TTL, history purge policy.
-4. **Email normalization and password policy:** exact validation, password hashing library/cost.
-5. **Rate limits and incident audit:** thresholds, metadata, retention and PII controls.
-6. **Concurrency implementation:** lock/conditional update/isolation strategy validated against Prisma 8 RC and PostgreSQL.
-7. **Register response:** whether register creates a session or requires a separate login.
-8. **AI endpoints:** whether Identify/Diagnose require authentication.
+The policies in section 8 are proposed defaults. The owner must approve or edit them before implementation. In particular, confirm: (1) mobile-style JSON token transport vs browser cookies; (2) immediate Session check for every protected request; (3) 15-minute / 7-day / 30-day lifetimes; (4) strict reuse revocation. After approval, there should be no unresolved `TBD` affecting MVP behavior.
 
 ## 12. Implementation and migration checklist
 
-- [ ] Update existing `authentication-design.md` and `prisma-schema-design.md` to reference this approved model.
+- [ ] Treat this approved FSD and its linked feature docs as the canonical requirements; remove stale links when consolidating old documentation.
 - [ ] Review and update Prisma 8 `contract.prisma`; verify with `pnpm exec prisma contract emit`.
-- [ ] Do **not** apply existing pending migration `20261122T1655_init_identity_plants`: it creates sample `User/Post`, not this model.
+- [ ] Inspect pending migration `20261122T1655_init_identity_plants` against the approved model before any apply; do not assume it matches the current Contract.
 - [ ] Inspect local dev DB and explicitly confirm volume reset scope before deleting anything.
 - [ ] Generate a fresh migration from the validated contract, inspect `migration.ts` and `ops.json`, then apply to disposable development DB.
 - [ ] Verify DB marker/schema and migration status; test constraints.
