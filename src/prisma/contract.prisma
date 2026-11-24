@@ -16,24 +16,33 @@ model Session {
   id                String @id @onCreate(uuid())
   userId            String
   expiresAt         DateTime
-  revokeAt          DateTime?
+  lastActivityAt    DateTime
+  revokeDAt         DateTime?
+  revokedReason     String?
 
   user          User @relation(fields: [userId], references: [id])
   refreshTokens RefreshToken[]
 
   createdAt temporal.CreatedAt
 
-  @@index([userId, revokeAt])
+  @@index([userId, revokeDAt])
 }
 
 model RefreshToken {
   id String @id @onCreate(uuid())
   sessionId String
-  tokenHash String @unique
-  expiresAt DateTime
-  revokedAt  DateTime?
+  parentTokenId String? @unique
+
+  tokenHash     String @unique
+  expiresAt     DateTime
+  consumedAt    DateTime?
+  revokedAt     DateTime?
+  revokedReason String?
 
   session Session @relation(fields: [sessionId], references: [id])
+
+  parent RefreshToken? @relation("TokenLineage", fields: [parentTokenId], references: [id])
+  children RefreshToken[] @relation("TokenLineage")
 
   createdAt temporal.CreatedAt
 
