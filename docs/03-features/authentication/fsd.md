@@ -1,6 +1,6 @@
 # Plant Care — Authentication Functional Specification (FSD v1)
 
-**Status:** Proposed MVP specification — owner approval required before coding; not implemented.  
+**Status:** Accepted MVP policy — implementation in progress; not verified.  
 **Scope:** Identity & session lifecycle, including refresh-token rotation and reuse detection.  
 **Normative after approval:** This FSD defines behavior; `design.md` defines architecture; `use-cases.md` details flows; `test-cases.md` defines verification. Change these existing files when a decision changes.  
 **Traceability:** Business goal BR-02 (personal plant collection) requires authenticated ownership.
@@ -60,30 +60,7 @@ A user needs to return to their saved plants across visits without exposing anot
 
 ## 5. Use cases
 
-### UC-AUTH-01 — Register
-**Precondition:** A valid email and password are supplied; uniqueness is enforced during persistence.  
-**Main flow:** Visitor submits valid email/password → system normalizes and validates input → securely hashes password → persists User → returns registration success.  
-**Alternatives:** Duplicate email or invalid input → reject without creating a User.  
-**Postcondition:** User exists; registration does not automatically log in.
-
-### UC-AUTH-02 — Login
-**Precondition:** Registered User exists.  
-**Main flow:** User submits credentials → system verifies password → creates Session and first RefreshToken atomically → issues access and refresh credentials.  
-**Alternatives:** Invalid credentials → generic authentication failure; no Session created.  
-**Postcondition:** One active Session with initial unconsumed RefreshToken.
-
-### UC-AUTH-03 — Refresh access credentials
-**Precondition:** Refresh token is authentic, unexpired, unconsumed, unrevoked, and belongs to an active Session.  
-**Main flow:** Client submits token T1 → system validates token and Session → atomically marks T1 consumed and creates T2 with `parentTokenId = T1.id` → commits → returns new credentials.  
-**Alternative A:** T1 already consumed → reject and revoke affected Session under strict policy.  
-**Alternative B:** Token expired, revoked for another reason, or Session inactive → reject; do not create a successor.  
-**Exception:** Database write fails → rollback rotation; do not claim success.  
-**Postcondition:** At most one valid successor per token, and session remains stable on successful rotation.
-
-### UC-AUTH-04 — Logout
-**Precondition:** Current Session can be identified securely.  
-**Main flow:** User requests logout → system revokes Session → subsequent refresh attempts on that Session fail.  
-**Postcondition:** Session invalid for refresh; protected requests reject the revoked Session on subsequent validation (section 8.2).
+See [Level 1 — System Overview](../../02-requirements/use-case-overview.md) and [Levels 2–3 — Authentication Use Cases](use-cases.md) for the canonical flow specifications. Shared requirements and security policy remain normative in this FSD.
 
 ## 6. UML — Rotation and reuse
 
@@ -164,7 +141,7 @@ erDiagram
 
 ## 8. MVP API and security policy (proposed for approval)
 
-These are **specific proposed choices**, not implemented facts. Once approved, they become the acceptance baseline. Changing one requires updating this FSD and affected tests, not creating a comparison document.
+These are **approved MVP choices**, not implemented facts. They form the acceptance baseline. Changing one requires updating this FSD and affected tests, not creating a comparison document.
 
 ### 8.1 Client and credential transport
 
@@ -176,7 +153,7 @@ These are **specific proposed choices**, not implemented facts. Once approved, t
 ### 8.2 Lifetimes and revocation
 
 - Access JWT TTL: **15 minutes**. Refresh token TTL: **7 days per issued token**. Session absolute TTL: **30 days from login**, not extended by rotation.
-- **Idle timeout:** a Session expires after an inactivity interval, independently of its absolute expiry. Proposed MVP default: **24 hours** (requires owner approval). Store `lastActivityAt` and define `idleExpiresAt = lastActivityAt + idleTimeout`; a Session is active only when `now < expiresAt` **and** `now < idleExpiresAt` and `revokedAt IS NULL`.
+- **Idle timeout:** a Session expires after an inactivity interval, independently of its absolute expiry. Approved MVP default: **24 hours**. Store `lastActivityAt` and define `idleExpiresAt = lastActivityAt + idleTimeout`; a Session is active only when `now < expiresAt` **and** `now < idleExpiresAt` and `revokedAt IS NULL`.
 - **Activity definition:** a successful authenticated protected API request or successful refresh counts as activity. Update `lastActivityAt` atomically/monotonically (never move backwards); do not extend `expiresAt`. Rejected requests, invalid tokens and background cleanup do not count. At the expiry boundary (`now >= idleExpiresAt`), deny access and refresh with `401`. Use a trusted server/DB clock and test boundary and concurrent updates. This per-request write is an MVP trade-off; optimize only after correctness tests.
 - Protected API endpoints verify JWT signature/claims and the referenced Session's active status. Thus logout/reuse revocation takes effect on subsequent protected requests (subject to in-flight requests). This costs a database read; no cache in the MVP.
 - Refresh uses the earlier of its own expiry and Session expiry. Strict reuse of a consumed token revokes only the affected Session.
@@ -244,7 +221,7 @@ Errors use `{ "error": { "code": "MACHINE_READABLE", "message": "Safe message" }
 
 ## 11. Approval gate
 
-The policies in section 8 are proposed defaults, including the proposed 24-hour idle timeout. The owner must approve or edit them before implementation. In particular, confirm: (1) mobile-style JSON token transport vs browser cookies; (2) immediate Session check for every protected request; (3) 15-minute / 7-day / 30-day lifetimes; (4) strict reuse revocation. After approval, there should be no unresolved `TBD` affecting MVP behavior.
+MVP policy accepted, including 24-hour idle timeout. Implementation and verification gates remain open.
 
 ## 12. Implementation and migration checklist
 
@@ -259,7 +236,7 @@ The policies in section 8 are proposed defaults, including the proposed 24-hour 
 
 ## 13. Traceability and document status
 
-- Business Requirements: `docs/02-business-analysis/requirements/business-requirements.md` (BR-02).
-- Existing auth design: `docs/03-system-design/security/authentication-design.md` (to be revised).
-- Existing DB design: `docs/03-system-design/database/prisma-schema-design.md` (to be revised).
-- **This file is a proposed FSD, not yet committed to GitHub.**
+- Business Requirements: [Business Requirements](../../02-requirements/business-requirements.md) (BR-02).
+- Existing auth design: [Design](design.md).
+- Existing DB design: [Data Model](../../04-architecture/database/authentication-data-model.md).
+- **Implementation verification remains pending.**

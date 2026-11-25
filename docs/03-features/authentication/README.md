@@ -1,14 +1,14 @@
 # Authentication
 
-> **Feature status:** Designed — awaiting approval; not implemented.  
+> **Feature status:** Accepted MVP policy — implementation in progress; not verified.  
 > **Scope:** Register · Login · Refresh Token Rotation · Logout · Current User (`/auth/me`).  
 > **Business outcome:** Users can securely access their own saved plants across visits.
 
 ## 1. Overview
 
-Authentication establishes a user's identity and manages login sessions. A successful login creates a **Session** and its first **RefreshToken**. Refreshing consumes the current token and issues a successor **within the same Session**. Reusing a consumed token revokes the affected Session under the proposed strict policy. Protected operations derive the user identity from verified credentials; they must not trust a client-provided `ownerId`.
+Authentication establishes a user's identity and manages login sessions. A successful login creates a **Session** and its first **RefreshToken**. Refreshing consumes the current token and issues a successor **within the same Session**. Reusing a consumed token revokes the affected Session under the strict policy. Protected operations derive the user identity from verified credentials; they must not trust a client-provided `ownerId`.
 
-**New acceptance requirements:** idle timeout (proposed 24h, awaiting approval), repeated logout returns `401` and is handled silently by the client, and PostgreSQL composite FK protects token lineage. Prisma Client relation joins remain **unverified until integration tests pass**.
+**New acceptance requirements:** idle timeout (24h, approved), repeated logout returns `401` and is handled silently by the client, and PostgreSQL composite FK protects token lineage. Prisma Client relation joins remain **unverified until integration tests pass**.
 
 **Important:** This folder describes the intended behavior. It does not mean Authentication has been implemented or tested.
 
@@ -18,11 +18,12 @@ Authentication establishes a user's identity and manages login sessions. A succe
 
 | Step | Document | What you will understand | Read it before… |
 |:---:|---|---|---|
-| **01** | **[Functional Specification (FSD)](fsd.md)** | Scope, functional requirements, business/security rules, API behavior and decisions awaiting approval | Discussing how to build the feature |
+| **01** | **[System Use Case Overview](../../02-requirements/use-case-overview.md)** | Level 1: actors, scope and capabilities | Feature decomposition |
 | **02** | **[Use Case Specifications](use-cases.md)** | How Register, Login, Refresh, Logout and ownership checks behave, including alternative flows | Designing the application logic |
-| **03** | **[Technical Design](design.md)** | Component responsibilities, data relationships, transaction boundaries and architectural trade-offs | Writing repositories and use cases |
-| **04** | **[Risk Register](risks.md)** | Security threats, failure modes, mitigation strategies and residual risks | Implementing security-sensitive behavior |
-| **05** | **[Test Cases](test-cases.md)** | What must be verified and what evidence counts as a passing test | Marking the feature complete |
+| **03** | **[Functional Specification (FSD)](fsd.md)** | Scope, functional requirements, business/security rules, API behavior and accepted MVP decisions | Discussing how to build the feature |
+| **04** | **[Technical Design](design.md)** | Component responsibilities, data relationships, transaction boundaries and architectural trade-offs | Writing repositories and use cases |
+| **05** | **[Risk Register](risks.md)** | Security threats, failure modes, mitigation strategies and residual risks | Implementing security-sensitive behavior |
+| **06** | **[Test Cases](test-cases.md)** | What must be verified and what evidence counts as a passing test | Marking the feature complete |
 
 ### Deep dives and supporting references
 
@@ -62,7 +63,7 @@ After the FSD and design decisions are approved, implement the feature in this o
 
 ## 5. Approval and completion criteria
 
-**Before coding:** Review and approve the security/transport/lifetime decisions in [FSD — Section 8](fsd.md). In particular, confirm token transport, access-token and Session lifetimes, logout enforcement, and strict reuse behavior. Until approved, these are proposals rather than final product decisions.
+**Approved baseline:** FSD §8 policy including 24-hour idle timeout, repeated logout 401 and strict reuse. Review affected documents before any policy change.
 
 **Definition of Done:**
 
@@ -74,4 +75,4 @@ After the FSD and design decisions are approved, implement the feature in this o
 - [ ] No plaintext password or refresh token persisted or logged.
 - [ ] Test results and remaining risks recorded; documentation updated to reflect verified implementation.
 
-**Next document:** [01 — Functional Specification (FSD)](fsd.md).
+**Next document:** [01 — System Use Case Overview](../../02-requirements/use-case-overview.md).
